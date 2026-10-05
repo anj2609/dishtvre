@@ -39,38 +39,38 @@ class _AllServicesScreenState extends State<AllServicesScreen> {
   void _myPack() {
     final c = context.read<AppStore>().connection;
     if (c != null) context.read<PlanStore>().open(c);
-    _open(const PlanScreen());
+    _open(const PlanScreen(readOnly: true));
   }
 
   void _soon(String what) => comingSoon(context, what);
 
   Map<_Group, List<_Service>> get _services => {
         _Group.packs: [
-          (Icons.live_tv_rounded, 'My Pack', _myPack),
-          (Icons.add_to_queue_rounded, 'Add/Remove Channel', () => _open(const AddRemoveScreen())),
-          (Icons.layers_rounded, 'Change Pack', () => _open(const ChangePackScreen())),
+          (Icons.live_tv_sharp, 'My Pack', _myPack),
+          (Icons.add_to_queue_sharp, 'Add/Remove Channel', () => _open(const AddRemoveScreen())),
+          (Icons.layers_sharp, 'Change Pack', () => _open(const ChangePackScreen())),
           (Icons.hd_outlined, 'Upgrade to HD', () => _soon('Upgrade to HD')),
-          (Icons.list_alt_rounded, 'Channel Guide', () => _soon('Channel Guide')),
-          (Icons.search_rounded, 'Channel No. Finder', () => _soon('Channel No. Finder')),
+          (Icons.list_alt_sharp, 'Channel Guide', () => _soon('Channel Guide')),
+          (Icons.search_sharp, 'Channel No. Finder', () => _soon('Channel No. Finder')),
         ],
         _Group.recharge: [
-          (Icons.currency_rupee_rounded, 'Recharge', () => _soon('Recharge')),
-          (Icons.event_repeat_rounded, 'Autopay', () => _soon('Autopay')),
-          (Icons.more_time_rounded, '3 Days Credit', () => _soon('3 Days Credit')),
-          (Icons.receipt_long_rounded, 'Account Statement', () => _soon('Account Statement')),
+          (Icons.currency_rupee_sharp, 'Recharge', () => _soon('Recharge')),
+          (Icons.event_repeat_sharp, 'Autopay', () => _soon('Autopay')),
+          (Icons.more_time_sharp, '3 Days Credit', () => _soon('3 Days Credit')),
+          (Icons.receipt_long_sharp, 'Account Statement', () => _soon('Account Statement')),
           (Icons.local_offer_outlined, 'Offers', () => _soon('Offers')),
           (Icons.emoji_events_outlined, 'Loyalty', () => _soon('Loyalty')),
           (Icons.luggage_outlined, 'Pause Connection', () => _soon('Pause Connection')),
           (Icons.people_alt_outlined, 'Recharge for Friends & Family', () => _soon('Recharge for Friends & Family')),
         ],
         _Group.account: [
-          (Icons.person_outline_rounded, 'My Account', () => _open(const ProfileScreen())),
-          (Icons.phonelink_ring_rounded, 'Update Mobile No.', () => _soon('Update Mobile No.')),
-          (Icons.troubleshoot_rounded, 'Troubleshoot', () => _soon('Troubleshoot')),
+          (Icons.person_outline_sharp, 'My Account', () => _open(const ProfileScreen())),
+          (Icons.phonelink_ring_sharp, 'Update Mobile No.', () => _soon('Update Mobile No.')),
+          (Icons.troubleshoot_sharp, 'Troubleshoot', () => _soon('Troubleshoot')),
           (Icons.request_quote_outlined, 'Bills & Queries', () => _soon('Bills & Queries')),
           (Icons.inventory_2_outlined, 'Orders & Requests', () => _soon('Orders & Requests')),
-          (Icons.wifi_tethering_error_rounded, 'Signal Issue', () => _soon('Signal Issue')),
-          (Icons.all_inclusive_rounded, 'Activate Always On', () => _soon('Activate Always On')),
+          (Icons.wifi_tethering_error_sharp, 'Signal Issue', () => _soon('Signal Issue')),
+          (Icons.all_inclusive_sharp, 'Activate Always On', () => _soon('Activate Always On')),
           (Icons.tv_off_outlined, 'Resolve on TV Error', () => _soon('Resolve on TV Error')),
           (Icons.engineering_outlined, 'Request Technician', () => _soon('Request Technician')),
         ],

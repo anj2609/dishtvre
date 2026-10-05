@@ -50,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _pages.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -58,13 +59,30 @@ class _HomeScreenState extends State<HomeScreen> {
     return h < 12 ? 'Good morning,' : (h < 17 ? 'Good afternoon,' : 'Good evening,');
   }
 
+  bool _searching = false;
+  final _searchFocus = FocusNode();
+
+  // Open or close the search bar; opening focuses the field and raises the keyboard.
+  void _toggleSearch() {
+    setState(() => _searching = !_searching);
+    if (_searching) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _searchFocus.requestFocus();
+        SystemChannels.textInput.invokeMethod('TextInput.show');
+      });
+    } else {
+      _searchFocus.unfocus();
+    }
+  }
+
   void _open(Widget screen) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
 
   // My Pack: what's in the selected TV's plan.
   void _myPack() {
     final c = context.read<AppStore>().connection;
     if (c != null) context.read<PlanStore>().open(c);
-    _open(const PlanScreen());
+    _open(const PlanScreen(readOnly: true));
   }
 
   @override
@@ -103,10 +121,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           ]),
                         ),
                       ),
-                      if (s.loading && s.connections.isEmpty) const Skeleton(height: 240) else Reveal(order: 1, child: _connections(s)),
-                      Reveal(order: 2, child: _quickActions()),
-                      Reveal(order: 3, child: _onYourTv(plan)),
-                      Reveal(order: 4, child: _offer()),
+                      // Always one child here, so the list below never shifts.
+                      AnimatedSize(duration: const Duration(milliseconds: 180), alignment: Alignment.topCenter, child: _searching ? _searchBar() : const SizedBox(width: double.infinity)),
+                      if (s.loading && s.connections.isEmpty) const Skeleton(height: 240) else Reveal(order: 2, child: _connections(s)),
+                      Reveal(order: 3, child: _quickActions()),
+                      Reveal(order: 4, child: _onYourTv(plan)),
+                      Reveal(order: 5, child: _offer()),
                     ],
                   ),
                 ),
@@ -122,7 +142,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _topBar(AppStore s) => Padding(
         padding: const EdgeInsets.fromLTRB(S.lg, S.sm, S.lg, 0),
         child: Row(children: [
-          RoundIconButton(icon: Icons.menu_rounded, label: 'Menu', onTap: () => _scaffold.currentState?.openDrawer()),
+          RoundIconButton(icon: Icons.menu_sharp, label: 'Menu', onTap: () => _scaffold.currentState?.openDrawer()),
           const SizedBox(width: S.md),
           Expanded(
             child: Align(
@@ -133,8 +153,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          _plainIcon(Icons.search_rounded, 'Search', () => comingSoon(context, 'Search')),
-          _plainIcon(Icons.notifications_none_rounded, 'Notifications', () => comingSoon(context, 'Notifications'), badge: true),
+          _plainIcon(Icons.search_sharp, _searching ? 'Close search' : 'Search', _toggleSearch, color: _searching ? C.brand : C.ink),
+          _plainIcon(Icons.notifications_none_sharp, 'Notifications', () => comingSoon(context, 'Notifications'), badge: true),
           const SizedBox(width: 4),
           // Your photo (or initials); opens Profile.
           Tooltip(
@@ -148,7 +168,40 @@ class _HomeScreenState extends State<HomeScreen> {
         ]),
       );
 
-  Widget _plainIcon(IconData icon, String label, VoidCallback onTap, {bool badge = false}) => Tooltip(
+  // Search bar, shown when the search icon is tapped: orange outline,
+  // search icon, a text field and a mic.
+  Widget _searchBar() => Padding(
+        padding: const EdgeInsets.fromLTRB(S.page, 0, S.page, S.md),
+        child: Container(
+          height: 52,
+          padding: const EdgeInsets.only(left: S.md + 2),
+          decoration: BoxDecoration(color: C.sunken, border: Border.all(color: C.brand, width: 1.2)),
+          child: Row(children: [
+            const Icon(Icons.search_sharp, size: 22, color: C.brand),
+            const SizedBox(width: S.md),
+            Expanded(
+              child: TextField(
+                focusNode: _searchFocus,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => comingSoon(context, 'Search'),
+                style: T.body.copyWith(fontSize: 15, color: C.ink),
+                cursorColor: C.brand,
+                decoration: InputDecoration(isCollapsed: true, border: InputBorder.none, hintText: 'Search services, packs, help...', hintStyle: T.body.copyWith(fontSize: 15, color: C.muted)),
+              ),
+            ),
+            Tooltip(
+              message: 'Voice search',
+              child: InkResponse(
+                onTap: () => comingSoon(context, 'Voice search'),
+                radius: 24,
+                child: const SizedBox(width: 52, height: 52, child: Icon(Icons.mic_none_sharp, size: 24, color: C.ink)),
+              ),
+            ),
+          ]),
+        ),
+      );
+
+  Widget _plainIcon(IconData icon, String label, VoidCallback onTap, {bool badge = false, Color color = C.ink}) => Tooltip(
         message: label,
         child: InkResponse(
           onTap: onTap,
@@ -157,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 44,
             height: 44,
             child: Stack(alignment: Alignment.center, children: [
-              Icon(icon, size: 22, color: C.ink),
+              Icon(icon, size: 22, color: color),
               if (badge)
                 Positioned(
                   top: 11,
@@ -240,10 +293,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _quickActions() {
     final actions = <(IconData, String, VoidCallback)>[
-      (Icons.layers_rounded, 'Change Pack', () => _open(const ChangePackScreen())),
-      (Icons.add_to_queue_rounded, 'Add/Remove Channel', () => _open(const AddRemoveScreen())),
-      (Icons.live_tv_rounded, 'My Pack', _myPack),
-      (Icons.apps_rounded, 'All Services', () => _open(const AllServicesScreen())),
+      (Icons.layers_sharp, 'Change Pack', () => _open(const ChangePackScreen())),
+      (Icons.add_to_queue_sharp, 'Add/Remove Channel', () => _open(const AddRemoveScreen())),
+      (Icons.live_tv_sharp, 'My Pack', _myPack),
+      (Icons.apps_sharp, 'All Services', () => _open(const AllServicesScreen())),
     ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(S.page, S.xl, S.page, 0),
@@ -342,7 +395,6 @@ class _HomeScreenState extends State<HomeScreen> {
         color: const Color(0xFF3B2F86),
         strength: 1,
         child: Stack(children: [
-          const Positioned(right: -26, bottom: -34, child: Icon(Icons.play_circle_fill_rounded, size: 130, color: Color(0x0DFFFFFF))),
           Padding(
             padding: const EdgeInsets.all(S.lg),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -360,11 +412,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _bottomNav() {
     const items = [
-      (Icons.home_rounded, 'Home'),
-      (Icons.live_tv_rounded, 'TV on the go'),
-      (Icons.currency_rupee_rounded, 'Recharge'),
-      (Icons.play_circle_outline_rounded, 'OTT'),
-      (Icons.support_agent_rounded, 'Get help'),
+      (Icons.home_sharp, 'Home'),
+      (Icons.live_tv_sharp, 'TV on the go'),
+      (Icons.currency_rupee_sharp, 'Recharge'),
+      (Icons.play_circle_outline_sharp, 'OTT'),
+      (Icons.support_agent_sharp, 'Get help'),
     ];
     return Container(
       decoration: const BoxDecoration(
@@ -390,7 +442,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                      decoration: BoxDecoration(color: i == _nav ? const Color(0x24FFFFFF) : Colors.transparent),
+                      
                       child: Icon(it.$1, size: 22, color: C.ink),
                     ),
                     const SizedBox(height: 3),

@@ -1,5 +1,6 @@
 // Your plan: everything you pay for, grouped, with a remove/undo on each
 // item that can be removed. Removals wait until you review and apply.
+// With readOnly (My Pack) it only shows what's in the plan: no editing.
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -11,17 +12,20 @@ import '../checkout/review_screen.dart';
 import '../widgets/widgets.dart';
 
 class PlanScreen extends StatelessWidget {
-  const PlanScreen({super.key});
+  const PlanScreen({super.key, this.readOnly = false});
+
+  /// Showcase only: hides remove/undo, locks and the review bar.
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
     final plan = context.watch<PlanStore>();
     final c = plan.connection;
     const groups = [
-      (ItemKind.basePack, 'Base pack', Icons.layers_rounded),
-      (ItemKind.alaCarte, 'Channels', Icons.live_tv_rounded),
-      (ItemKind.bouquet, 'Bouquets', Icons.dashboard_rounded),
-      (ItemKind.addOn, 'Add-ons & services', Icons.add_box_rounded),
+      (ItemKind.basePack, 'Base pack', Icons.layers_sharp),
+      (ItemKind.alaCarte, 'Channels', Icons.live_tv_sharp),
+      (ItemKind.bouquet, 'Bouquets', Icons.dashboard_sharp),
+      (ItemKind.addOn, 'Add-ons & services', Icons.add_box_sharp),
     ];
     return Scaffold(
       body: SafeArea(
@@ -51,14 +55,14 @@ class PlanScreen extends StatelessWidget {
                       child: Column(children: [
                         for (final (n, i) in plan.itemsOf(g.$1).indexed) ...[
                           if (n > 0) const Divider(height: 1, color: C.line, indent: S.lg),
-                          PlanItemRow(item: i, plan: plan),
+                          PlanItemRow(item: i, plan: plan, readOnly: readOnly),
                         ],
                       ]),
                     ),
                   ],
                 const SizedBox(height: S.lg),
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Icon(Icons.info_outline_rounded, size: 16, color: C.muted),
+                  const Icon(Icons.info_outline_sharp, size: 16, color: C.muted),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text('Prices include GST. Your bill also has the Network Capacity Fee (NCF), set by how many channels you have.', style: T.caption),
@@ -67,7 +71,7 @@ class PlanScreen extends StatelessWidget {
               ],
             ),
           ),
-          if (plan.hasChanges)
+          if (!readOnly && plan.hasChanges)
             BottomBar(
               child: Row(children: [
                 Expanded(
@@ -94,15 +98,16 @@ class PlanScreen extends StatelessWidget {
 /// One item of the plan: logo, name, details, price, and delete / undo (or
 /// a lock when it can't be removed).
 class PlanItemRow extends StatelessWidget {
-  const PlanItemRow({super.key, required this.item, required this.plan});
+  const PlanItemRow({super.key, required this.item, required this.plan, this.readOnly = false});
 
   final PlanItem item;
   final PlanStore plan;
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context) {
     final i = item;
-    final removed = plan.isRemoved(i);
+    final removed = !readOnly && plan.isRemoved(i);
     final detail = [
       if (i.channels > 1) '${i.channels} channels',
       if (i.isHd) 'HD',
@@ -110,7 +115,6 @@ class PlanItemRow extends StatelessWidget {
     ].join(' | ');
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      color: removed ? C.dangerSoft.withAlpha(120) : Colors.transparent,
       padding: const EdgeInsets.fromLTRB(S.lg, S.md, S.sm, S.md),
       child: Row(children: [
         if (i.logoUrl != null) ...[
@@ -132,16 +136,18 @@ class PlanItemRow extends StatelessWidget {
           ]),
         ),
         // Delete (or undo); items that can't be removed show a lock.
-        if (i.removable)
+        if (readOnly)
+          const SizedBox(width: S.sm)
+        else if (i.removable)
           IconButton(
             tooltip: removed ? 'Undo removing ${i.name}' : 'Remove ${i.name}',
             onPressed: () => plan.toggleRemove(i),
-            icon: Icon(removed ? Icons.undo_rounded : Icons.delete_outline_rounded, size: 22, color: removed ? C.ink : C.danger),
+            icon: Icon(removed ? Icons.undo_sharp : Icons.delete_outline_sharp, size: 22, color: removed ? C.ink : C.danger),
           )
         else
           Tooltip(
             message: '${i.name} can\'t be removed',
-            child: const SizedBox(width: 48, height: 48, child: Icon(Icons.lock_outline_rounded, size: 18, color: C.faint)),
+            child: const SizedBox(width: 48, height: 48, child: Icon(Icons.lock_outline_sharp, size: 18, color: C.faint)),
           ),
       ]),
     );
