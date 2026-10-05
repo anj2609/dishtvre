@@ -62,8 +62,8 @@ Widget _row(BuildContext ctx, Connection c, {required bool selected}) {
               Container(
                 width: 40,
                 height: 40,
-                decoration: const BoxDecoration(color: Color(0x33FFFFFF), shape: BoxShape.circle),
-                child: const Icon(Icons.tv_rounded, color: Colors.white, size: 20),
+                
+                child: const Icon(Icons.tv_sharp, color: Colors.white, size: 20),
               ),
               const SizedBox(width: S.md),
               Expanded(
@@ -74,8 +74,8 @@ Widget _row(BuildContext ctx, Connection c, {required bool selected}) {
                   Text(note, style: T.caption.copyWith(color: Colors.white, fontWeight: FontWeight.w600)),
                 ]),
               ),
-              if (selected) ...[const SizedBox(width: S.sm), const Icon(Icons.check_circle_rounded, color: Colors.white)],
-              if (!usable) ...[const SizedBox(width: S.sm), const Icon(Icons.lock_outline_rounded, color: soft, size: 20)],
+              if (selected) ...[const SizedBox(width: S.sm), const Icon(Icons.check_circle_sharp, color: Colors.white)],
+              if (!usable) ...[const SizedBox(width: S.sm), const Icon(Icons.lock_outline_sharp, color: soft, size: 20)],
             ]),
           ),
         ),

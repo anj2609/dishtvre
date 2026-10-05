@@ -67,7 +67,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       note: 'Used for OTP and alerts',
                     ),
                     _InfoRow(
-                      icon: Icons.mail_outline_rounded,
+                      icon: Icons.mail_outline_sharp,
                       label: 'EMAIL',
                       value: sub.email.isEmpty ? 'Not added' : sub.email,
                       note: 'Bills and statements are sent here',
@@ -183,7 +183,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 34,
                 height: 34,
                 color: cardColorOf(t.status),
-                child: const Icon(Icons.tv_rounded, size: 18, color: Colors.white),
+                child: const Icon(Icons.tv_sharp, size: 18, color: Colors.white),
               ),
               const SizedBox(width: S.md),
               Expanded(
@@ -210,7 +210,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ]),
       const SizedBox(height: S.md),
       Row(children: [
-        const Icon(Icons.info_outline_rounded, size: 15, color: C.muted),
+        const Icon(Icons.info_outline_sharp, size: 15, color: C.muted),
         const SizedBox(width: 6),
         Expanded(
           child: Text('${w.kind}  |  Installed ${_date(w.installedOn)}  |  $covered of ${w.items.length} parts covered',
@@ -262,7 +262,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Expanded(child: Text(title, style: _labelStyle)),
                   const SizedBox(width: S.sm),
                   // Status as plain coloured text: green while covered, amber once ended.
-                  Icon(active ? Icons.check_rounded : Icons.history_rounded, size: 15, color: active ? C.success : C.warning),
+                  Icon(active ? Icons.check_sharp : Icons.history_sharp, size: 15, color: active ? C.success : C.warning),
                   const SizedBox(width: 3),
                   Text(active ? 'Active' : 'Expired', style: T.label.copyWith(fontSize: 12.5, color: active ? C.success : C.warning)),
                 ]),

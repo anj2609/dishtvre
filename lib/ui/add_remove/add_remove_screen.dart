@@ -133,7 +133,7 @@ class _AddRemoveScreenState extends State<AddRemoveScreen> {
                         textAlign: TextAlign.end,
                       ),
                     ),
-                    if (canSwitch) ...[const SizedBox(width: 4), const Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: C.ink)],
+                    if (canSwitch) ...[const SizedBox(width: 4), const Icon(Icons.keyboard_arrow_down_sharp, size: 20, color: C.ink)],
                   ]),
                 ),
               ),
@@ -303,7 +303,7 @@ class _AddRemoveScreenState extends State<AddRemoveScreen> {
                         ),
                     ]),
                   ),
-                  Icon(open ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, color: C.muted),
+                  Icon(open ? Icons.keyboard_arrow_up_sharp : Icons.keyboard_arrow_down_sharp, color: C.muted),
                 ]),
               ),
             ),
@@ -380,7 +380,7 @@ class _AddRemoveScreenState extends State<AddRemoveScreen> {
                   const SizedBox(height: 2),
                   Row(mainAxisSize: MainAxisSize.min, children: [
                     Text(open ? 'Hide details' : 'View details', style: T.label.copyWith(fontSize: 13, color: C.brand)),
-                    Icon(open ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, size: 18, color: C.brand),
+                    Icon(open ? Icons.keyboard_arrow_up_sharp : Icons.keyboard_arrow_down_sharp, size: 18, color: C.brand),
                   ]),
                 ]),
               ]),
@@ -406,7 +406,7 @@ class _AddRemoveScreenState extends State<AddRemoveScreen> {
           const SizedBox(height: S.sm),
           Wrap(spacing: S.sm, runSpacing: S.sm, children: [
             SecondaryButton(label: 'See all channels', onTap: () => _go(const PlanScreen())),
-            SecondaryButton(label: 'Change pack', icon: Icons.layers_rounded, onTap: () => _go(const ChangePackScreen())),
+            SecondaryButton(label: 'Change pack', icon: Icons.layers_sharp, onTap: () => _go(const ChangePackScreen())),
           ]),
         ]),
       );
@@ -506,7 +506,7 @@ class _Tile extends StatelessWidget {
                         : Container(
                             decoration:
                                 BoxDecoration(shape: BoxShape.circle, border: Border.all(color: i.isRecordingPlan ? C.danger : C.lineStrong, width: 1.5)),
-                            child: Icon(i.isRecordingPlan ? Icons.fiber_manual_record_rounded : Icons.add_box_outlined,
+                            child: Icon(i.isRecordingPlan ? Icons.fiber_manual_record_sharp : Icons.add_box_outlined,
                                 color: i.isRecordingPlan ? C.danger : C.muted),
                           ),
                   ),
@@ -518,7 +518,7 @@ class _Tile extends StatelessWidget {
                         width: 22,
                         height: 22,
                         decoration: BoxDecoration(color: C.brand, shape: BoxShape.circle, border: Border.all(color: C.bg, width: 2)),
-                        child: const Icon(Icons.check_rounded, size: 14, color: Colors.white),
+                        child: const Icon(Icons.check_sharp, size: 14, color: Colors.white),
                       ),
                     ),
                 ]),
@@ -531,7 +531,7 @@ class _Tile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text.rich(
                   TextSpan(children: [
-                    const WidgetSpan(alignment: PlaceholderAlignment.middle, child: Icon(Icons.trending_up_rounded, size: 13, color: C.brand)),
+                    const WidgetSpan(alignment: PlaceholderAlignment.middle, child: Icon(Icons.trending_up_sharp, size: 13, color: C.brand)),
                     TextSpan(text: ' ${i.trend}'),
                   ]),
                   textAlign: TextAlign.center,

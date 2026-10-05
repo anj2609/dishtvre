@@ -166,7 +166,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                     Wrap(spacing: S.sm, runSpacing: S.sm, alignment: WrapAlignment.center, children: [
                       _Tool(icon: Icons.rotate_90_degrees_ccw_outlined, label: 'Rotate', onTap: _rotate),
                       _Tool(icon: Icons.flip_outlined, label: 'Flip', active: _flip, onTap: () => setState(() => _flip = !_flip)),
-                      _Tool(icon: Icons.restart_alt_rounded, label: 'Reset', onTap: _reset),
+                      _Tool(icon: Icons.restart_alt_sharp, label: 'Reset', onTap: _reset),
                     ]),
                     const SizedBox(height: S.lg),
                     // Effects: small previews of this photo in each look.

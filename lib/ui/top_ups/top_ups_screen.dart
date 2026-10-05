@@ -232,7 +232,7 @@ class _ItemCard extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: i.isRecordingPlan ? C.danger : C.lineStrong, width: 1.5)),
                   child: i.isRecordingPlan
-                      ? const Icon(Icons.fiber_manual_record_rounded, color: C.danger, size: 18)
+                      ? const Icon(Icons.fiber_manual_record_sharp, color: C.danger, size: 18)
                       : Text(initials, style: T.label.copyWith(color: C.brandDeep, fontSize: 12)),
                 ),
               const SizedBox(width: S.md),
@@ -264,7 +264,7 @@ class _ItemCard extends StatelessWidget {
                   duration: const Duration(milliseconds: 160),
                   transitionBuilder: (c, a) => ScaleTransition(scale: a, child: c),
                   child: Icon(
-                    added ? Icons.check_rounded : Icons.add_rounded,
+                    added ? Icons.check_sharp : Icons.add_sharp,
                     key: ValueKey(added),
                     size: 20,
                     color: added ? Colors.white : C.brand,

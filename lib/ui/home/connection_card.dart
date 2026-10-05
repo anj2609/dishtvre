@@ -55,12 +55,7 @@ class ConnectionCard extends StatelessWidget {
       padding: EdgeInsets.fromLTRB(14, compact ? 10 : 14, 14, 14),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(color: Color(0x33FFFFFF), shape: BoxShape.circle),
-            child: const Icon(Icons.tv_rounded, color: Colors.white, size: 18),
-          ),
+          const SizedBox(width: 34, height: 34, child: Icon(Icons.tv_sharp, color: Colors.white, size: 24)),
           const SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -73,7 +68,6 @@ class ConnectionCard extends StatelessWidget {
           Flexible(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              color: const Color(0x40000000),
               child: Text(pillText,
                   textAlign: TextAlign.center, style: T.caption.copyWith(fontSize: 11, height: 1.2, fontWeight: FontWeight.w800, color: Colors.white)),
             ),
@@ -107,7 +101,7 @@ class ConnectionCard extends StatelessWidget {
                         textAlign: TextAlign.center, style: T.label.copyWith(fontSize: 14, color: fill)),
                   ),
                   const SizedBox(width: 6),
-                  Icon(Icons.arrow_forward_rounded, color: fill, size: 17),
+                  Icon(Icons.arrow_forward_sharp, color: fill, size: 17),
                 ]),
               ),
             ),

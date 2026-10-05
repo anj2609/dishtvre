@@ -218,7 +218,7 @@ class _CompareScreenState extends State<CompareScreen> {
                       ? Row(mainAxisSize: MainAxisSize.min, children: [
                           Flexible(child: cell),
                           const SizedBox(width: 3),
-                          const Icon(Icons.star_rounded, size: 14, color: C.brand),
+                          const Icon(Icons.star_sharp, size: 14, color: C.brand),
                         ])
                       : cell,
                 ),
@@ -331,7 +331,7 @@ class _CompareScreenState extends State<CompareScreen> {
                   label: s.containsKey(c.key) ? 'Included' : 'Not included',
                   child: ExcludeSemantics(
                     child:
-                        s.containsKey(c.key) ? Icon(Icons.check_rounded, size: 20, color: _colInk(col)) : Container(width: 12, height: 2, color: C.lineStrong),
+                        s.containsKey(c.key) ? Icon(Icons.check_sharp, size: 20, color: _colInk(col)) : Container(width: 12, height: 2, color: C.lineStrong),
                   ),
                 ),
               ),

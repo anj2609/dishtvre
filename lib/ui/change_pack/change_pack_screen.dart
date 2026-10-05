@@ -115,9 +115,9 @@ class _ChangePackScreenState extends State<ChangePackScreen> {
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 12, vertical: compact ? 10 : 9),
               child: compact
-                  ? const Icon(Icons.swap_horiz_rounded, size: 20, color: C.ink)
+                  ? const Icon(Icons.swap_horiz_sharp, size: 20, color: C.ink)
                   : Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.swap_horiz_rounded, size: 18, color: C.ink),
+                      const Icon(Icons.swap_horiz_sharp, size: 18, color: C.ink),
                       const SizedBox(width: 4),
                       Flexible(child: Text('Switch TV', maxLines: 1, softWrap: false, style: T.label)),
                     ]),
@@ -140,7 +140,7 @@ class _ChangePackScreenState extends State<ChangePackScreen> {
             width: 42,
             height: 42,
             decoration: BoxDecoration(color: soft, shape: BoxShape.circle),
-            child: Icon(Icons.tv_rounded, color: accent, size: 20),
+            child: Icon(Icons.tv_sharp, color: accent, size: 20),
           ),
           const SizedBox(width: S.md),
           Expanded(
@@ -148,7 +148,7 @@ class _ChangePackScreenState extends State<ChangePackScreen> {
               Row(children: [
                 Expanded(child: Text('CURRENT PACK', style: T.overline)),
                 Text('Your plan', style: T.label.copyWith(color: C.brandDeep, fontSize: 12)),
-                const Icon(Icons.chevron_right_rounded, color: C.brandDeep, size: 18),
+                const Icon(Icons.chevron_right_sharp, color: C.brandDeep, size: 18),
               ]),
               Text(base?.name ?? c.planName, style: T.item.copyWith(fontSize: 16)),
               Text(
@@ -168,7 +168,7 @@ class _ChangePackScreenState extends State<ChangePackScreen> {
           padding: const EdgeInsets.all(S.md + 2),
           decoration: BoxDecoration(color: C.cardTop, border: Border.all(color: C.brand)),
           child: Row(children: [
-            const Icon(Icons.pending_actions_rounded, color: C.brandDeep),
+            const Icon(Icons.pending_actions_sharp, color: C.brandDeep),
             const SizedBox(width: S.md),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -176,7 +176,7 @@ class _ChangePackScreenState extends State<ChangePackScreen> {
                 Text('New bill about ${rupees(plan.estimate)}/month | Tap to review', style: T.caption),
               ]),
             ),
-            const Icon(Icons.chevron_right_rounded, color: C.brandDeep),
+            const Icon(Icons.chevron_right_sharp, color: C.brandDeep),
           ]),
         ),
       );
@@ -209,7 +209,7 @@ class _ChangePackScreenState extends State<ChangePackScreen> {
                 color: Colors.white,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.arrow_forward_rounded, color: C.explore, size: 20),
+              child: const Icon(Icons.arrow_forward_sharp, color: C.explore, size: 20),
             ),
           ]),
           const SizedBox(height: 12),
@@ -223,7 +223,7 @@ class _ChangePackScreenState extends State<ChangePackScreen> {
   Widget _tiles(List<(String, String?)> logos) {
     final ai = _tile(
       color: C.ai,
-      icon: Icons.auto_awesome_rounded,
+      icon: Icons.auto_awesome_sharp,
       tag: 'AI',
       title: 'Find my pack',
       sub: '5 quick questions',
@@ -232,7 +232,7 @@ class _ChangePackScreenState extends State<ChangePackScreen> {
     );
     final addOns = _tile(
       color: C.addOns,
-      icon: Icons.add_rounded,
+      icon: Icons.add_sharp,
       title: 'Add-ons',
       sub: 'Channels and more',
       label: 'Add-ons. Add channels, bouquets and Recording',
@@ -297,7 +297,7 @@ class _ChangePackScreenState extends State<ChangePackScreen> {
   Widget _iconBadge(IconData icon) => Container(
         width: 44,
         height: 44,
-        decoration: const BoxDecoration(color: Color(0x33FFFFFF), shape: BoxShape.circle),
+        
         child: Icon(icon, color: Colors.white, size: 22),
       );
 

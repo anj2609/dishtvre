@@ -175,7 +175,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.tune_rounded, size: 18, color: n > 0 ? C.brand : C.ink),
+            Icon(Icons.tune_sharp, size: 18, color: n > 0 ? C.brand : C.ink),
             const SizedBox(width: 6),
             Text(n > 0 ? 'Filters ($n)' : 'Filters', style: T.label.copyWith(color: n > 0 ? C.brand : C.ink)),
           ]),
@@ -204,7 +204,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               child: InputChip(
                 label: Text(label, style: T.caption.copyWith(color: C.ink, fontWeight: FontWeight.w700)),
                 onDeleted: () => setState(() => _filter = without),
-                deleteIcon: const Icon(Icons.close_rounded, size: 16),
+                deleteIcon: const Icon(Icons.close_sharp, size: 16),
                 backgroundColor: C.surface,
                 side: const BorderSide(color: C.lineStrong),
                 shape: const RoundedRectangleBorder(),
@@ -229,7 +229,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     if (chosen == null && comparing) {
       main = PrimaryButton(label: 'Compare packs', subtitle: 'Your pack + ${plan.compare.length}', onTap: canCompare ? compare : null);
     } else if (chosen != null) {
-      main = PrimaryButton(label: 'Continue', icon: Icons.arrow_forward_rounded, onTap: next);
+      main = PrimaryButton(label: 'Continue', icon: Icons.arrow_forward_sharp, onTap: next);
     } else {
       main = const PrimaryButton(label: 'Choose a pack to continue');
     }
@@ -338,7 +338,7 @@ class _PackCard extends StatelessWidget {
                 if (p.lockIn || p.ruleMessage != null) ...[
                   const SizedBox(height: 6),
                   Row(children: [
-                    const Icon(Icons.info_outline_rounded, size: 14, color: C.muted),
+                    const Icon(Icons.info_outline_sharp, size: 14, color: C.muted),
                     const SizedBox(width: 4),
                     Expanded(child: Text(p.ruleMessage ?? 'A lock-in period applies.', style: T.caption.copyWith(fontSize: 11.5))),
                   ]),
@@ -359,7 +359,7 @@ class _PackCard extends StatelessWidget {
                           minimumSize: const Size(0, 40),
                           shape: const RoundedRectangleBorder(),
                         ),
-                        icon: Icon(comparing ? Icons.check_rounded : Icons.compare_arrows_rounded, size: 17),
+                        icon: Icon(comparing ? Icons.check_sharp : Icons.compare_arrows_sharp, size: 17),
                         label: Text(comparing ? 'Comparing' : 'Compare', style: T.label.copyWith(color: comparing ? C.brand : C.ink)),
                       ),
                     ),
@@ -379,7 +379,7 @@ class _PackCard extends StatelessWidget {
                         ),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
                           Text('Details', style: T.label.copyWith(color: C.brand)),
-                          const Icon(Icons.chevron_right_rounded, size: 18, color: C.brand),
+                          const Icon(Icons.chevron_right_sharp, size: 18, color: C.brand),
                         ]),
                       ),
                     ),

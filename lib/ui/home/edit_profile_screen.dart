@@ -115,8 +115,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
         if (has) ...[
           const Divider(height: 1, color: C.line),
-          _photoOption(ctx, Icons.crop_rounded, 'Edit current photo', 'edit'),
-          _photoOption(ctx, Icons.delete_outline_rounded, 'Remove photo', 'remove', danger: true),
+          _photoOption(ctx, Icons.crop_sharp, 'Edit current photo', 'edit'),
+          _photoOption(ctx, Icons.delete_outline_sharp, 'Remove photo', 'remove', danger: true),
         ],
         SizedBox(height: S.md + MediaQuery.paddingOf(ctx).bottom),
       ]),
@@ -389,7 +389,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.line))),
                     child: Row(children: [
                       Expanded(child: Text(st, style: T.body.copyWith(fontSize: 14, color: st == _state ? C.brand : C.ink, fontWeight: FontWeight.w600))),
-                      if (st == _state) const Icon(Icons.check_rounded, color: C.brand, size: 20),
+                      if (st == _state) const Icon(Icons.check_sharp, color: C.brand, size: 20),
                     ]),
                   ),
                 ),
@@ -453,7 +453,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   _Field(
                     key: const ValueKey('field-name'),
                     anchor: _keys['name'],
-                    icon: Icons.person_outline_rounded,
+                    icon: Icons.person_outline_sharp,
                     label: 'Full Name',
                     controller: _name,
                     error: _tried ? _nameErr : null,
@@ -479,7 +479,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   _Field(
                     key: const ValueKey('field-email'),
                     anchor: _keys['email'],
-                    icon: Icons.mail_outline_rounded,
+                    icon: Icons.mail_outline_sharp,
                     label: 'Email',
                     controller: _email,
                     error: _tried ? _emailErr : null,
@@ -594,7 +594,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           width: 26,
                           height: 26,
                           decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: C.bg, width: 2)),
-                          child: const Icon(Icons.photo_camera_rounded, size: 14, color: Colors.black),
+                          child: const Icon(Icons.photo_camera_sharp, size: 14, color: Colors.black),
                         ),
                       ),
                     ]),
@@ -619,7 +619,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Expanded(child: Text('Profile $pct% complete', style: T.label.copyWith(fontSize: 13))),
-              if (pct == 100) const Icon(Icons.check_rounded, size: 16, color: C.success),
+              if (pct == 100) const Icon(Icons.check_sharp, size: 16, color: C.success),
             ]),
             const SizedBox(height: S.sm),
             Container(
@@ -666,8 +666,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   Icon(Icons.map_outlined, size: 20, color: err != null ? C.danger : C.muted),
                   const SizedBox(width: 12),
                   Expanded(child: Text(_state.isEmpty ? 'Choose your state' : _state, style: _state.isEmpty ? _Field.hintStyle : _Field.valueStyle)),
-                  if (ok) ...[const Icon(Icons.check_circle_rounded, size: 18, color: C.success), const SizedBox(width: 6)],
-                  const Icon(Icons.keyboard_arrow_down_rounded, color: C.muted),
+                  if (ok) ...[const Icon(Icons.check_circle_sharp, size: 18, color: C.success), const SizedBox(width: 6)],
+                  const Icon(Icons.keyboard_arrow_down_sharp, color: C.muted),
                 ]),
               ),
             ),
@@ -775,7 +775,7 @@ class _Field extends StatelessWidget {
             ),
             prefixIconColor: iconColor,
             prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-            suffixIcon: ok ? const Icon(Icons.check_circle_rounded, size: 18, color: C.success) : null,
+            suffixIcon: ok ? const Icon(Icons.check_circle_sharp, size: 18, color: C.success) : null,
             suffixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 0),
             enabledBorder: border(error != null ? C.danger : C.lineStrong),
             focusedBorder: border(error != null ? C.danger : C.brand, 1.5),

@@ -130,7 +130,7 @@ class _AiScreenState extends State<AiScreen> {
     final o = _opts!;
     final (IconData icon, String title, String hint, List<Widget> choices) = switch (_q) {
       0 => (
-          Icons.translate_rounded,
+          Icons.translate_sharp,
           'Which languages do you watch?',
           'Pick at least one.',
           [
@@ -142,7 +142,7 @@ class _AiScreenState extends State<AiScreen> {
           ]
         ),
       1 => (
-          Icons.favorite_rounded,
+          Icons.favorite_sharp,
           'What do you love watching?',
           'Pick at least two.',
           [
@@ -151,13 +151,13 @@ class _AiScreenState extends State<AiScreen> {
           ]
         ),
       2 => (
-          Icons.weekend_rounded,
+          Icons.weekend_sharp,
           'How do you like to watch?',
           'Pick one.',
           [for (final v in o.viewing) Pick(label: v, selected: _a.viewing == v, onTap: () => setState(() => _a.viewing = v))]
         ),
       3 => (
-          Icons.hd_rounded,
+          Icons.hd_sharp,
           'Which picture quality?',
           'HD needs an HD box.',
           [
@@ -166,7 +166,7 @@ class _AiScreenState extends State<AiScreen> {
           ]
         ),
       _ => (
-          Icons.savings_rounded,
+          Icons.savings_sharp,
           "What's your monthly budget?",
           'You can still add extras later.',
           [for (final b in o.budgets) Pick(label: 'Up to ${rupees(b)}', selected: _a.budget == b, onTap: () => setState(() => _a.budget = b))]
@@ -314,7 +314,7 @@ class _AiScreenState extends State<AiScreen> {
           // The top two reasons, one line each.
           for (final why in r.reasons.take(2))
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Icon(Icons.check_rounded, size: 15, color: C.success),
+              const Icon(Icons.check_sharp, size: 15, color: C.success),
               const SizedBox(width: 6),
               Expanded(child: Text(why, style: T.caption.copyWith(fontSize: 12.5, color: C.inkSoft))),
             ]),

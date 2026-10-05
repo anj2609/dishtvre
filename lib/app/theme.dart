@@ -6,6 +6,7 @@
 // one solid colour per feature). No gradients or glows. Every screen reads
 // colours, type, spacing and radii from here.
 
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 
 abstract final class C {
@@ -41,32 +42,32 @@ abstract final class C {
   static const brand = Color(0xFFFF6A3D);
   static const brandDark = Color(0xFFC4441F);
   static const brandDeep = Color(0xFFFF9B78);
-  static const brandSoft = Color(0x2EFF6A3D);
-  static const brandTint = Color(0x17FF6A3D);
+  static const brandSoft = Color(0x00000000);
+  static const brandTint = Color(0x00000000);
 
   // Status.
   // Status, kept muted so nothing glares on the dark ground.
   static const success = Color(0xFF63BF8E);
-  static const successSoft = Color(0x1F63BF8E);
+  static const successSoft = Color(0x00000000);
   static const warning = Color(0xFFE2B45A);
-  static const warningSoft = Color(0x1FE2B45A);
+  static const warningSoft = Color(0x00000000);
   static const danger = Color(0xFFF07C88);
-  static const dangerSoft = Color(0x1FF07C88);
+  static const dangerSoft = Color(0x00000000);
   static const info = Color(0xFF7FA8F0);
-  static const infoSoft = Color(0x1F7FA8F0);
+  static const infoSoft = Color(0x00000000);
 
   // Connection states.
   static const vacation = Color(0xFF7FA8F0);
-  static const vacationSoft = Color(0x1F7FA8F0);
+  static const vacationSoft = Color(0x00000000);
   static const off = Color(0xFF9696A8);
-  static const offSoft = Color(0x269696A8);
+  static const offSoft = Color(0x00000000);
 
   // Kept for the few places that sit on a lit stage.
   static const night = bg;
   static const nightRaised = surface;
   static const onNight = ink;
   static const onNightMuted = muted;
-  static const glass = Color(0x12FFFFFF);
+  static const glass = Color(0x00000000);
   static const glassLine = Color(0x1FFFFFFF);
   static const magenta = Color(0xFFFF4D7E);
   static const violet = Color(0xFF8B6CFF);
@@ -178,7 +179,7 @@ ThemeData buildTheme() {
     ),
     splashFactory: InkRipple.splashFactory,
     dividerColor: C.line,
-    textSelectionTheme: const TextSelectionThemeData(cursorColor: C.brand, selectionColor: C.brandSoft, selectionHandleColor: C.brand),
+    textSelectionTheme: const TextSelectionThemeData(cursorColor: C.brand, selectionColor: Color(0x55FF6A3D), selectionHandleColor: C.brand),
   );
   return base.copyWith(
     textTheme: base.textTheme.apply(bodyColor: C.ink, displayColor: C.ink),

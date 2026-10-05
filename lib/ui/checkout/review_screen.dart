@@ -57,7 +57,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               child: q == null
                   ? (p.applyState == ApplyState.failed
                       ? EmptyNote(
-                          icon: Icons.cloud_off_rounded,
+                          icon: Icons.cloud_off_sharp,
                           title: 'We couldn’t price this change',
                           action: 'Try again',
                           onAction: p.review,
@@ -71,13 +71,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
                         Text('Your changes', style: T.section),
                         const SizedBox(height: S.sm),
                         if (p.newBase != null) ...[
-                          _group('Switching to', Icons.swap_horiz_rounded, C.brand, C.brandSoft, [
+                          _group('Switching to', Icons.swap_horiz_sharp, C.brand, C.brandSoft, [
                             (p.newBase!.name, '${rupees(p.newBase!.price)}/mo', '${p.newBase!.channels} channels', null),
                           ]),
                           if (p.basePack != null)
                             _group(
                                 'Replacing',
-                                Icons.history_rounded,
+                                Icons.history_sharp,
                                 C.muted,
                                 C.sunken,
                                 [
@@ -86,13 +86,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
                                 strike: true),
                         ],
                         if (p.added.isNotEmpty)
-                          _group('Adding', Icons.add_rounded, C.success, C.successSoft, [
+                          _group('Adding', Icons.add_sharp, C.success, C.successSoft, [
                             for (final i in p.added) (i.name, rupees(i.price, signed: true), _kindLabel(i), i.logoUrl),
                           ]),
                         if (p.removed.isNotEmpty)
                           _group(
                               'Removing',
-                              Icons.remove_rounded,
+                              Icons.remove_sharp,
                               C.danger,
                               C.dangerSoft,
                               [
@@ -119,7 +119,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                         ),
                         const SizedBox(height: S.lg),
                         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          const Icon(Icons.bolt_rounded, size: 18, color: C.muted),
+                          const Icon(Icons.bolt_sharp, size: 18, color: C.muted),
                           const SizedBox(width: 6),
                           Expanded(child: Text('Changes apply as soon as you confirm. Your next recharge uses the new bill.', style: T.caption)),
                         ]),
@@ -156,7 +156,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       padding: const EdgeInsets.all(S.lg),
       decoration: BoxDecoration(color: C.brand, border: Border.all(color: C.brandDark)),
       child: Row(children: [
-        const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 34),
+        const Icon(Icons.receipt_long_sharp, color: Colors.white, size: 34),
         const SizedBox(width: S.md + 2),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

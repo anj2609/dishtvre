@@ -35,7 +35,7 @@ class Header extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(S.page, S.md, S.page, S.md),
       child: LayoutBuilder(builder: (context, box) {
         final back = RoundIconButton(
-          icon: Icons.arrow_back_rounded,
+          icon: Icons.arrow_back_sharp,
           label: 'Back',
           filled: !plainBack,
           onTap: onBack ?? () => Navigator.of(context).maybePop(),
@@ -298,7 +298,6 @@ class Tag extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.zero),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         if (icon != null) ...[Icon(icon, size: 12, color: fg), const SizedBox(width: 4)],
         Flexible(child: Text(text, style: T.caption.copyWith(fontSize: 11.5, fontWeight: FontWeight.w700, color: fg))),
@@ -342,7 +341,7 @@ class Pick extends StatelessWidget {
               duration: const Duration(milliseconds: 160),
               transitionBuilder: (c, a) => ScaleTransition(scale: a, child: c),
               child: selected
-                  ? const Icon(Icons.check_rounded, key: ValueKey('on'), size: 16, color: Colors.white)
+                  ? const Icon(Icons.check_sharp, key: ValueKey('on'), size: 16, color: Colors.white)
                   : (icon != null ? Icon(icon, key: const ValueKey('icon'), size: 15, color: C.muted) : const SizedBox(key: ValueKey('none'))),
             ),
             if (selected || icon != null) const SizedBox(width: 6),
@@ -516,7 +515,7 @@ class SearchBox extends StatelessWidget {
       padding: const EdgeInsets.only(left: 14, right: 4),
       decoration: BoxDecoration(border: Border.all(color: C.lineStrong)),
       child: Row(children: [
-        const Icon(Icons.search_rounded, size: 20, color: C.muted),
+        const Icon(Icons.search_sharp, size: 20, color: C.muted),
         const SizedBox(width: 8),
         Expanded(
           child: TextField(
@@ -536,7 +535,7 @@ class SearchBox extends StatelessWidget {
                     controller.clear();
                     onChanged('');
                   },
-                  icon: const Icon(Icons.close_rounded, size: 18, color: C.muted),
+                  icon: const Icon(Icons.close_sharp, size: 18, color: C.muted),
                 ),
         ),
       ]),
@@ -545,7 +544,7 @@ class SearchBox extends StatelessWidget {
 }
 
 class EmptyNote extends StatelessWidget {
-  const EmptyNote({super.key, required this.title, this.body, this.icon = Icons.search_off_rounded, this.action, this.onAction});
+  const EmptyNote({super.key, required this.title, this.body, this.icon = Icons.search_off_sharp, this.action, this.onAction});
 
   final String title;
   final String? body;
@@ -624,7 +623,7 @@ Future<V?> showSheet<V>(BuildContext context, {required String title, String? su
                   if (subtitle != null) ...[const SizedBox(height: 2), Text(subtitle, style: T.caption)],
                 ]),
               ),
-              RoundIconButton(icon: Icons.close_rounded, label: 'Close', filled: false, onTap: () => Navigator.of(ctx).pop()),
+              RoundIconButton(icon: Icons.close_sharp, label: 'Close', filled: false, onTap: () => Navigator.of(ctx).pop()),
             ]),
           ),
           Flexible(child: builder(ctx)),

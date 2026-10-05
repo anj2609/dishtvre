@@ -183,7 +183,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                   shape: radio ? BoxShape.circle : BoxShape.rectangle,
                   border: Border.all(color: checked ? C.brand : C.lineStrong, width: 1.5),
                 ),
-                child: checked ? Icon(radio ? Icons.circle : Icons.check_rounded, size: radio ? 8 : 16, color: Colors.white) : null,
+                child: checked ? Icon(radio ? Icons.circle : Icons.check_sharp, size: radio ? 8 : 16, color: Colors.white) : null,
               ),
               const SizedBox(width: S.md),
               Expanded(child: Text(label, style: T.body.copyWith(color: C.ink))),

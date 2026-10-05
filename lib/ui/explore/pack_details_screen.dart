@@ -230,7 +230,7 @@ class _PackDetailsScreenState extends State<PackDetailsScreen> {
                     Text(n, style: T.title.copyWith(color: C.onInk)),
                     Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                       Flexible(child: Text(label, textAlign: TextAlign.center, style: T.caption.copyWith(color: C.onInk, fontWeight: FontWeight.w800))),
-                      const Icon(Icons.chevron_right_rounded, size: 16, color: C.onInk),
+                      const Icon(Icons.chevron_right_sharp, size: 16, color: C.onInk),
                     ]),
                   ]),
                 ),

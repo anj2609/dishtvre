@@ -52,9 +52,9 @@ class _ChannelDiffScreenState extends State<ChannelDiffScreen> {
   }
 
   static (String, String, Color, Color, IconData) _style(ChannelDiff d) => switch (d) {
-        ChannelDiff.added => ('New', "Channels you'll get that aren't in your pack now.", C.success, C.successSoft, Icons.add_circle_rounded),
-        ChannelDiff.kept => ('You keep', 'Channels you have now that stay with you.', C.info, C.infoSoft, Icons.check_circle_rounded),
-        ChannelDiff.lost => ('You lose', "Channels you have now that this pack doesn't include.", C.danger, C.dangerSoft, Icons.remove_circle_rounded),
+        ChannelDiff.added => ('New', "Channels you'll get that aren't in your pack now.", C.success, C.successSoft, Icons.add_circle_sharp),
+        ChannelDiff.kept => ('You keep', 'Channels you have now that stay with you.', C.info, C.infoSoft, Icons.check_circle_sharp),
+        ChannelDiff.lost => ('You lose', "Channels you have now that this pack doesn't include.", C.danger, C.dangerSoft, Icons.remove_circle_sharp),
       };
 
   @override
@@ -110,7 +110,7 @@ class _ChannelDiffScreenState extends State<ChannelDiffScreen> {
                             ChannelDiff.kept => 'None of your current channels are in this pack.',
                             ChannelDiff.lost => 'You keep every channel you have now.',
                           },
-                    icon: q.isNotEmpty ? Icons.search_off_rounded : Icons.tv_off_rounded,
+                    icon: q.isNotEmpty ? Icons.search_off_sharp : Icons.tv_off_sharp,
                   )
                 else
                   for (final g in genres) ...[
