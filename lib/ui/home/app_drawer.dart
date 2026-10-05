@@ -14,7 +14,12 @@ import '../../state/app_store.dart';
 import '../../state/plan_store.dart';
 import '../change_pack/plan_screen.dart';
 import '../widgets/widgets.dart';
+import 'account_statement_screen.dart';
+import '../setup_box/setup_box_screens.dart';
 import 'home_screen.dart';
+import 'language_screen.dart';
+import 'support_screen.dart';
+import 'my_invoices_screen.dart';
 import 'profile_screen.dart';
 
 /// Shown at the bottom of the menu. Keep in step with pubspec.yaml.
@@ -45,7 +50,7 @@ class AppDrawer extends StatelessWidget {
     void myPack() {
       final c = context.read<AppStore>().connection;
       if (c != null) context.read<PlanStore>().open(c);
-      go(const PlanScreen());
+      go(const PlanScreen(readOnly: true));
     }
 
     final header = Padding(
@@ -59,25 +64,25 @@ class AppDrawer extends StatelessWidget {
             if (sub != null) Text('+91 ${sub.mobilePretty}', style: T.caption.copyWith(fontSize: 13)),
           ]),
         ),
-        IconButton(tooltip: 'Close menu', onPressed: nav.pop, icon: const Icon(Icons.close_rounded, color: C.ink)),
+        IconButton(tooltip: 'Close menu', onPressed: nav.pop, icon: const Icon(Icons.close_sharp, color: C.ink)),
       ]),
     );
 
     final items = <Widget>[
       const _Section('MY ACCOUNT'),
-      _Item(Icons.person_outline_rounded, 'My Profile', () => go(const ProfileScreen())),
-      _Item(Icons.layers_outlined, 'My Existing Pack', myPack),
-      _Item(Icons.summarize_outlined, 'Account Statement', () => soon('Account Statement')),
-      _Item(Icons.receipt_outlined, 'My Invoices', () => soon('My Invoices')),
+      _Item(Icons.person_outline_sharp, 'My Profile', C.brand, 'Name, number, photo', () => go(const ProfileScreen())),
+      _Item(Icons.layers_outlined, 'My Existing Pack', C.brand, 'See what is in your plan', myPack),
+      _Item(Icons.summarize_outlined, 'Account Statement', C.brand, 'Recharges and deductions', () => go(const AccountStatementScreen())),
+      _Item(Icons.receipt_outlined, 'My Invoices', C.brand, 'Download your bills', () => go(const MyInvoicesScreen())),
       const _Section('EXPLORE'),
-      _Item(Icons.router_outlined, 'New Setup Box', () => soon('New Setup Box')),
-      _Item(Icons.auto_awesome_outlined, 'Discover Content', () => soon('Discover Content')),
-      _Item(Icons.smart_display_outlined, 'VZY Television', () => soon('VZY Television')),
+      _Item(Icons.router_outlined, 'New Setup Box', C.violet, 'Add another connection', () => go(const NewSetupBoxScreen())),
+      _Item(Icons.auto_awesome_outlined, 'Discover Content', C.violet, 'Shows picked for you', () => soon('Discover Content')),
+      _Item(Icons.smart_display_outlined, 'VZY Television', C.violet, 'Watch on the go', () => soon('VZY Television')),
       const _Section('HELP & SETTINGS'),
-      _Item(Icons.note_add_outlined, 'Issue Tracker', () => soon('Issue Tracker')),
-      _Item(Icons.headset_mic_outlined, 'Contact Customer Support', () => soon('Customer Support')),
-      _Item(Icons.language_rounded, 'Choose Language', () => soon('Choose Language')),
-      _Item(Icons.star_outline_rounded, 'Rate Us', () => soon('Rate Us')),
+      _Item(Icons.note_add_outlined, 'Issue Tracker', C.teal, 'Track your requests', () => soon('Issue Tracker')),
+      _Item(Icons.headset_mic_outlined, 'Contact Customer Support', C.teal, 'Call or chat with us', () => go(const ContactSupportScreen())),
+      _Item(Icons.language_sharp, 'Choose Language', C.teal, 'App language', () => go(const LanguageScreen())),
+      _Item(Icons.star_outline_sharp, 'Rate Us', C.teal, 'Tell us how we are doing', () => soon('Rate Us')),
       const _Section('ABOUT'),
       _Link('Consumer Corner', () => soon('Consumer Corner')),
       _Link('Privacy Policy', () => soon('Privacy Policy')),
@@ -94,12 +99,14 @@ class AppDrawer extends StatelessWidget {
         child: ExcludeSemantics(
           child: InkWell(
             onTap: () => soon('Log out'),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(S.page, S.lg, S.page, S.sm),
-              child: Row(children: [
-                const Icon(Icons.logout_rounded, color: C.brand),
-                const SizedBox(width: S.md),
-                Expanded(child: Text('Log out', style: T.item.copyWith(fontSize: 16, color: C.brand))),
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(S.page, S.md, S.page, S.sm),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(border: Border.all(color: C.brand)),
+              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Icon(Icons.logout_sharp, size: 20, color: C.brand),
+                const SizedBox(width: S.sm),
+                Text('Log out', style: T.item.copyWith(fontSize: 15, color: C.brand)),
               ]),
             ),
           ),
@@ -142,16 +149,27 @@ class _Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(S.page, S.xl, S.page, S.xs),
-        child: Semantics(header: true, child: Text(title, style: T.overline.copyWith(fontSize: 11.5))),
+        child: Semantics(
+          header: true,
+          child: Row(children: [
+            Container(width: 3, height: 12, color: C.brand),
+            const SizedBox(width: S.sm),
+            Text(title, style: T.overline.copyWith(fontSize: 11.5)),
+            const SizedBox(width: S.sm),
+            const Expanded(child: Divider(height: 1, color: C.line)),
+          ]),
+        ),
       );
 }
 
-/// A menu row: white icon, name, chevron.
+/// A menu row: tinted square icon tile, name, short hint, chevron.
 class _Item extends StatelessWidget {
-  const _Item(this.icon, this.label, this.onTap);
+  const _Item(this.icon, this.label, this.tint, this.hint, this.onTap);
 
   final IconData icon;
   final String label;
+  final Color tint;
+  final String hint;
   final VoidCallback onTap;
 
   @override
@@ -163,12 +181,17 @@ class _Item extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(S.page, 13, S.md, 13),
+              padding: const EdgeInsets.fromLTRB(S.page, 8, S.md, 8),
               child: Row(children: [
-                Icon(icon, size: 24, color: C.ink),
-                const SizedBox(width: S.lg),
-                Expanded(child: Text(label, style: T.body.copyWith(fontSize: 15.5, color: C.ink, fontWeight: FontWeight.w600))),
-                const Icon(Icons.chevron_right_rounded, color: C.faint),
+                SizedBox(width: 40, height: 40, child: Icon(icon, size: 24, color: C.ink)),
+                const SizedBox(width: S.md),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(label, style: T.body.copyWith(fontSize: 15, color: C.ink, fontWeight: FontWeight.w700)),
+                    Text(hint, style: T.caption.copyWith(fontSize: 12)),
+                  ]),
+                ),
+                const Icon(Icons.chevron_right_sharp, color: C.faint),
               ]),
             ),
           ),
