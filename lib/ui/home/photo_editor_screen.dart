@@ -1,6 +1,7 @@
 // Edit photo: frame a profile picture inside a circle. Pinch to zoom, drag
-// to move, rotate in quarter turns, or reset. "Use photo" returns the framed
-// square as PNG bytes; Cancel returns nothing.
+// to move, rotate in quarter turns, flip, pick an effect, or reset. "Use
+// photo" returns the framed square (with its effect) as PNG bytes; Cancel
+// returns nothing.
 
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -25,7 +26,45 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
   final _frame = GlobalKey();
   final _view = TransformationController();
   int _turns = 0;
+  bool _flip = false;
+  int _effect = 0;
   bool _saving = false;
+
+  // Effects as colour matrices (null = the photo as it is).
+  static const _lr = 0.2126, _lg = 0.7152, _lb = 0.0722;
+  static List<double> _saturate(double s) => [
+        _lr * (1 - s) + s, _lg * (1 - s), _lb * (1 - s), 0, 0, //
+        _lr * (1 - s), _lg * (1 - s) + s, _lb * (1 - s), 0, 0,
+        _lr * (1 - s), _lg * (1 - s), _lb * (1 - s) + s, 0, 0,
+        0, 0, 0, 1, 0,
+      ];
+  static List<double> _mono(double contrast) {
+    final t = (1 - contrast) * 128;
+    return [
+      _lr * contrast, _lg * contrast, _lb * contrast, 0, t, //
+      _lr * contrast, _lg * contrast, _lb * contrast, 0, t,
+      _lr * contrast, _lg * contrast, _lb * contrast, 0, t,
+      0, 0, 0, 1, 0,
+    ];
+  }
+
+  static final _effects = <(String, List<double>?)>[
+    ('Original', null),
+    ('Mono', _mono(1)),
+    ('Noir', _mono(1.45)),
+    ('Warm', [1.12, 0, 0, 0, 8, 0, 1.0, 0, 0, 2, 0, 0, 0.84, 0, -12, 0, 0, 0, 1, 0]),
+    ('Cool', [0.88, 0, 0, 0, -8, 0, 1.0, 0, 0, 0, 0, 0, 1.16, 0, 14, 0, 0, 0, 1, 0]),
+    ('Vivid', _saturate(1.55)),
+    ('Fade', [0.8, 0, 0, 0, 34, 0, 0.8, 0, 0, 34, 0, 0, 0.8, 0, 34, 0, 0, 0, 1, 0]),
+  ];
+
+  /// The photo with the current flip and effect.
+  Widget _styled(double side, int effect) {
+    Widget img = Image.memory(widget.bytes, width: side, height: side, fit: BoxFit.cover, gaplessPlayback: true);
+    if (_flip) img = Transform.flip(flipX: true, child: img);
+    final m = _effects[effect].$2;
+    return m == null ? img : ColorFiltered(colorFilter: ColorFilter.matrix(m), child: img);
+  }
 
   @override
   void dispose() {
@@ -40,6 +79,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
 
   void _reset() => setState(() {
         _turns = 0;
+        _flip = false;
+        _effect = 0;
         _view.value = Matrix4.identity();
       });
 
@@ -55,6 +96,34 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
     nav.pop(data?.buffer.asUint8List());
   }
 
+  /// One effect preview: the photo in that look, with its name.
+  Widget _effectChip(int i) {
+    final on = i == _effect;
+    final name = _effects[i].$1;
+    return Semantics(
+      container: true,
+      button: true,
+      selected: on,
+      label: '$name effect',
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          onTap: () => setState(() => _effect = i),
+          child: Column(children: [
+            Container(
+              width: 58,
+              height: 58,
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: on ? C.brand : Colors.transparent, width: 2)),
+              child: ClipOval(child: _styled(52, i)),
+            ),
+            const SizedBox(height: 6),
+            Text(name, textScaler: TextScaler.noScaling, style: T.label.copyWith(fontSize: 12, color: on ? C.brand : C.muted)),
+          ]),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -64,7 +133,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
           const Header(title: 'Edit photo', subtitle: 'Pinch to zoom, drag to move'),
           Expanded(
             child: LayoutBuilder(builder: (context, box) {
-              final side = math.max(160.0, math.min(420.0, math.min(box.maxWidth - S.page * 2, box.maxHeight - 96)));
+              final side = math.max(160.0, math.min(420.0, math.min(box.maxWidth - S.page * 2, box.maxHeight - 200)));
               return SingleChildScrollView(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(minHeight: box.maxHeight),
@@ -84,10 +153,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                               child: SizedBox(
                                 width: side,
                                 height: side,
-                                child: RotatedBox(
-                                  quarterTurns: _turns,
-                                  child: Image.memory(widget.bytes, width: side, height: side, fit: BoxFit.cover, gaplessPlayback: true),
-                                ),
+                                child: RotatedBox(quarterTurns: _turns, child: _styled(side, _effect)),
                               ),
                             ),
                           ),
@@ -97,10 +163,23 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                       ]),
                     ),
                     const SizedBox(height: S.lg),
-                    Wrap(spacing: S.md, runSpacing: S.sm, alignment: WrapAlignment.center, children: [
+                    Wrap(spacing: S.sm, runSpacing: S.sm, alignment: WrapAlignment.center, children: [
                       _Tool(icon: Icons.rotate_90_degrees_ccw_outlined, label: 'Rotate', onTap: _rotate),
+                      _Tool(icon: Icons.flip_outlined, label: 'Flip', active: _flip, onTap: () => setState(() => _flip = !_flip)),
                       _Tool(icon: Icons.restart_alt_rounded, label: 'Reset', onTap: _reset),
                     ]),
+                    const SizedBox(height: S.lg),
+                    // Effects: small previews of this photo in each look.
+                    SizedBox(
+                      height: 92,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: S.page),
+                        itemCount: _effects.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: S.md),
+                        itemBuilder: (_, i) => _effectChip(i),
+                      ),
+                    ),
                   ]),
                 ),
               );
@@ -145,24 +224,25 @@ class _CircleMask extends CustomPainter {
 }
 
 class _Tool extends StatelessWidget {
-  const _Tool({required this.icon, required this.label, required this.onTap});
+  const _Tool({required this.icon, required this.label, required this.onTap, this.active = false});
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final bool active;
 
   @override
   Widget build(BuildContext context) => Material(
-        type: MaterialType.transparency,
-        shape: const RoundedRectangleBorder(side: BorderSide(color: C.lineStrong)),
+        color: active ? C.brand : Colors.transparent,
+        shape: RoundedRectangleBorder(side: BorderSide(color: active ? C.brand : C.lineStrong)),
         child: InkWell(
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(icon, size: 19, color: C.ink),
+              Icon(icon, size: 19, color: active ? Colors.white : C.ink),
               const SizedBox(width: 6),
-              Text(label, style: T.label),
+              Text(label, style: T.label.copyWith(color: active ? Colors.white : C.ink)),
             ]),
           ),
         ),

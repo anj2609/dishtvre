@@ -32,6 +32,11 @@ void main() {
     await t.pumpAndSettle();
     await t.tap(find.text('Reset'));
     await t.pumpAndSettle();
+    await t.tap(find.text('Flip'));
+    await t.pumpAndSettle();
+    await t.tap(find.bySemanticsLabel('Mono effect'));
+    await t.pumpAndSettle();
+    expect(find.text('Noir'), findsOneWidget);
 
     // Rendering to an image needs real async work.
     await t.runAsync(() async {

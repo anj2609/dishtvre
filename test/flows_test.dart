@@ -132,11 +132,14 @@ void main() {
 
         // Edit Profile: a bad pincode is caught, then the change saves.
         await _tap(t, find.text('Edit Profile'));
-        await _tap(t, find.text('Add Photo'));
-        expect(find.text('Take a photo'), findsOneWidget);
-        expect(find.text('Choose from gallery'), findsOneWidget);
+        expect(find.text('Add Photo'), findsNothing);
+        await _tap(t, find.bySemanticsLabel('Add a profile photo'));
+        expect(find.text('Camera'), findsOneWidget);
+        expect(find.text('Gallery'), findsOneWidget);
+        expect(find.text('Files'), findsOneWidget);
         await t.tap(find.byTooltip('Close'));
         await t.pumpAndSettle();
+        await _find(t, find.byKey(const ValueKey('field-name')));
         await t.enterText(find.descendant(of: find.byKey(const ValueKey('field-name')), matching: find.byType(TextField)), 'Kashyap R Raina');
         FocusManager.instance.primaryFocus?.unfocus();
         await t.pumpAndSettle();
@@ -154,6 +157,25 @@ void main() {
         await _tap(t, find.text('Save Changes'));
         await _find(t, find.text('Kashyap R Raina'));
         await _find(t, find.textContaining('Maharashtra 201302'));
+
+        // Leaving with unsaved changes asks first. (Let the "Profile updated"
+        // message clear first; it sits over the button for a few seconds.)
+        await t.pump(const Duration(seconds: 5));
+        await t.pumpAndSettle();
+        await _tap(t, find.text('Edit Profile'));
+        await _find(t, find.byKey(const ValueKey('field-email')));
+        await t.enterText(find.descendant(of: find.byKey(const ValueKey('field-email')), matching: find.byType(TextField)), 'kashyap@example.org');
+        FocusManager.instance.primaryFocus?.unfocus();
+        await t.pumpAndSettle();
+        await _find(t, find.text('1 unsaved change'));
+        await _back(t);
+        expect(find.text('Discard changes?'), findsOneWidget);
+        await _tap(t, find.text('Keep editing'));
+        expect(find.text('Edit Profile'), findsOneWidget);
+        await _back(t);
+        await _tap(t, find.text('Discard changes'));
+        await _find(t, find.text('CONTACT DETAILS'));
+        await _find(t, find.text('kashyap.raina@example.com'));
         await _back(t);
 
         // Change pack and the Switch TV sheet.
