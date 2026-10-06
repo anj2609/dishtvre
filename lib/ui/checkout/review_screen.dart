@@ -110,7 +110,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                             if (q.discount > 0) _row('Loyalty discount', rupees(-q.discount, signed: true), color: C.success),
                             _row('Network Capacity Fee', rupees(q.ncf)),
                             _row('GST (18%)', rupees(q.gst)),
-                            const Padding(padding: EdgeInsets.symmetric(vertical: S.sm), child: Divider(height: 1, color: C.line)),
+                            Padding(padding: EdgeInsets.symmetric(vertical: S.sm), child: Divider(height: 1, color: C.line)),
                             Row(children: [
                               Expanded(child: Text('New monthly bill', style: T.section)),
                               Text(rupees(q.total), style: T.price.copyWith(fontSize: 19)),
@@ -119,7 +119,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                         ),
                         const SizedBox(height: S.lg),
                         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          const Icon(Icons.bolt_sharp, size: 18, color: C.muted),
+                          Icon(Icons.bolt_sharp, size: 18, color: C.muted),
                           const SizedBox(width: 6),
                           Expanded(child: Text('Changes apply as soon as you confirm. Your next recharge uses the new bill.', style: T.caption)),
                         ]),
@@ -147,14 +147,14 @@ class _ReviewScreenState extends State<ReviewScreen> {
         ItemKind.basePack => 'Base pack',
       };
 
-  // The new bill in a solid orange box: flat, no tints or gradients.
+  // The new bill on the card orange gradient, like the Home TV card.
   Widget _summary(double total, double current) {
     final d = total - current;
     final same = d.abs() < 0.5;
     const soft = Color(0xE6FFFFFF);
     return Container(
       padding: const EdgeInsets.all(S.lg),
-      decoration: BoxDecoration(color: C.brand, border: Border.all(color: C.brandDark)),
+      decoration: const BoxDecoration(gradient: G.brand),
       child: Row(children: [
         const Icon(Icons.receipt_long_sharp, color: Colors.white, size: 34),
         const SizedBox(width: S.md + 2),
@@ -187,7 +187,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 width: 28,
                 height: 28,
                 color: Color.alphaBlend(bg, C.cardTop),
-                child: Icon(icon, size: 17, color: fg),
+                child: BrandShade(on: fg == C.brand, child: Icon(icon, size: 17, color: fg)),
               ),
               const SizedBox(width: S.sm),
               Expanded(child: Text(title.toUpperCase(), style: T.overline.copyWith(color: fg))),
@@ -214,11 +214,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
         ),
       );
 
-  Widget _row(String label, String value, {Color color = C.inkSoft}) => Padding(
+  Widget _row(String label, String value, {Color? color}) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 5),
         child: Row(children: [
-          Expanded(child: Text(label, style: T.body.copyWith(color: color))),
-          Text(value, style: T.label.copyWith(color: color == C.inkSoft ? C.ink : color)),
+          Expanded(child: Text(label, style: T.body.copyWith(color: color ?? C.inkSoft))),
+          Text(value, style: T.label.copyWith(color: color ?? C.ink)),
         ]),
       );
 }

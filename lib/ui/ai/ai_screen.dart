@@ -175,8 +175,8 @@ class _AiScreenState extends State<AiScreen> {
     final count = switch (_q) { 0 => _a.languages.length, 1 => _a.genres.length, _ => 0 };
     return ListView(key: const PageStorageKey('ai-questions'), padding: const EdgeInsets.fromLTRB(S.page, 0, S.page, S.xxl), children: [
       Row(children: [
-        Expanded(child: Text('Question ${_q + 1} of $_total', style: T.label.copyWith(color: C.brandDeep))),
-        if (count > 0) Tag('$count selected', fg: C.brandDeep, bg: C.brandSoft),
+        Expanded(child: BrandShade(child: Text('Question ${_q + 1} of $_total', style: T.label.copyWith(color: C.brandDeep)))),
+        if (count > 0) BrandShade(child: Tag('$count selected', fg: C.brandDeep, bg: C.brandSoft)),
       ]),
       const SizedBox(height: S.sm),
       Row(children: [
@@ -186,7 +186,7 @@ class _AiScreenState extends State<AiScreen> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               height: 5,
-              decoration: BoxDecoration(color: i <= _q ? C.brand : C.line, borderRadius: BorderRadius.zero),
+              decoration: BoxDecoration(gradient: i <= _q ? G.brand : null, color: i <= _q ? null : C.line),
             ),
           ),
         ],
@@ -205,7 +205,7 @@ class _AiScreenState extends State<AiScreen> {
             width: 52,
             height: 52,
             decoration: BoxDecoration(color: C.brandSoft, borderRadius: BorderRadius.zero),
-            child: Icon(icon, color: C.brand, size: 26),
+            child: BrandShade(child: Icon(icon, color: C.brand, size: 26)),
           ),
           const SizedBox(height: S.lg),
           Text(title, style: T.display.copyWith(fontSize: 24)),
@@ -236,7 +236,7 @@ class _AiScreenState extends State<AiScreen> {
             _recs = null;
             _q = 0;
           }),
-          child: Text('Change my answers', style: T.label.copyWith(color: C.brandDeep)),
+          child: BrandShade(child: Text('Change my answers', style: T.label.copyWith(color: C.brandDeep))),
         ),
       ),
     ]);
@@ -257,7 +257,7 @@ class _AiScreenState extends State<AiScreen> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Wrap(spacing: S.sm, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                Text(r.label, style: T.overline.copyWith(fontSize: 10.5, color: first ? C.brand : C.muted)),
+                BrandShade(on: first, child: Text(r.label, style: T.overline.copyWith(fontSize: 10.5, color: first ? C.brand : C.muted))),
                 Text('${r.matchScore}% match', style: T.overline.copyWith(fontSize: 10.5, color: C.success)),
               ]),
               Text(p.name, style: T.item.copyWith(fontSize: 15.5, height: 1.25)),
@@ -314,7 +314,7 @@ class _AiScreenState extends State<AiScreen> {
           // The top two reasons, one line each.
           for (final why in r.reasons.take(2))
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Icon(Icons.check_sharp, size: 15, color: C.success),
+              Icon(Icons.check_sharp, size: 15, color: C.success),
               const SizedBox(width: 6),
               Expanded(child: Text(why, style: T.caption.copyWith(fontSize: 12.5, color: C.inkSoft))),
             ]),

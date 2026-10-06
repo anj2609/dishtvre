@@ -114,7 +114,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ]),
         ),
         if (has) ...[
-          const Divider(height: 1, color: C.line),
+          Divider(height: 1, color: C.line),
           _photoOption(ctx, Icons.crop_sharp, 'Edit current photo', 'edit'),
           _photoOption(ctx, Icons.delete_outline_sharp, 'Remove photo', 'remove', danger: true),
         ],
@@ -208,13 +208,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         child: ExcludeSemantics(
           child: Material(
             type: MaterialType.transparency,
-            shape: const RoundedRectangleBorder(side: BorderSide(color: C.lineStrong)),
+            shape: RoundedRectangleBorder(side: BorderSide(color: C.lineStrong)),
             child: InkWell(
               onTap: () => Navigator.of(ctx).pop(value),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: S.lg, horizontal: S.sm),
                 child: Column(children: [
-                  Icon(icon, size: 28, color: C.brand),
+                  BrandShade(child: Icon(icon, size: 28, color: C.brand)),
                   const SizedBox(height: S.sm),
                   FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1, style: T.label.copyWith(fontSize: 13.5))),
                 ]),
@@ -233,7 +233,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             onTap: () => Navigator.of(ctx).pop(value),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: S.page, vertical: 16),
-              decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.line))),
+              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: C.line))),
               child: Row(children: [
                 Icon(icon, size: 22, color: danger ? C.danger : C.ink),
                 const SizedBox(width: S.lg),
@@ -386,10 +386,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   onTap: () => Navigator.of(ctx).pop(st),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: S.page, vertical: 14),
-                    decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.line))),
+                    decoration: BoxDecoration(border: Border(bottom: BorderSide(color: C.line))),
                     child: Row(children: [
-                      Expanded(child: Text(st, style: T.body.copyWith(fontSize: 14, color: st == _state ? C.brand : C.ink, fontWeight: FontWeight.w600))),
-                      if (st == _state) const Icon(Icons.check_sharp, color: C.brand, size: 20),
+                      Expanded(child: BrandShade(on: st == _state, child: Text(st, style: T.body.copyWith(fontSize: 14, color: st == _state ? C.brand : C.ink, fontWeight: FontWeight.w600)))),
+                      if (st == _state) BrandShade(child: Icon(Icons.check_sharp, color: C.brand, size: 20)),
                     ]),
                   ),
                 ),
@@ -537,7 +537,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       : Padding(
                           padding: const EdgeInsets.only(bottom: S.sm),
                           child: Row(children: [
-                            Container(width: 8, height: 8, color: C.brand),
+                            Container(width: 8, height: 8, decoration: const BoxDecoration(gradient: G.brand)),
                             const SizedBox(width: S.sm),
                             Expanded(child: Text('$changes unsaved ${changes == 1 ? 'change' : 'changes'}', style: T.label.copyWith(fontSize: 13))),
                             TextButton(
@@ -547,7 +547,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 minimumSize: const Size(0, 36),
                                 shape: const RoundedRectangleBorder(),
                               ),
-                              child: Text('Discard', style: T.label.copyWith(fontSize: 13, color: C.brand)),
+                              child: BrandShade(child: Text('Discard', style: T.label.copyWith(fontSize: 13, color: C.brand))),
                             ),
                           ]),
                         ),
@@ -570,7 +570,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Container(
       decoration: BoxDecoration(border: Border.all(color: C.cardEdge)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Container(height: 4, color: C.brand),
+        Container(height: 4, decoration: const BoxDecoration(gradient: G.brand)),
         Padding(
           padding: const EdgeInsets.all(S.lg),
           child: Row(children: [
@@ -612,14 +612,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ]),
         ),
-        const Divider(height: 1, color: C.line),
+        Divider(height: 1, color: C.line),
         // Completeness: a flat bar and the next thing to add.
         Padding(
           padding: const EdgeInsets.fromLTRB(S.lg, S.md, S.lg, S.md),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Expanded(child: Text('Profile $pct% complete', style: T.label.copyWith(fontSize: 13))),
-              if (pct == 100) const Icon(Icons.check_sharp, size: 16, color: C.success),
+              if (pct == 100) Icon(Icons.check_sharp, size: 16, color: C.success),
             ]),
             const SizedBox(height: S.sm),
             Container(
@@ -629,7 +629,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: AnimatedFractionallySizedBox(
                 duration: const Duration(milliseconds: 300),
                 widthFactor: share,
-                child: Container(color: pct == 100 ? C.success : C.brand),
+                child: Container(decoration: BoxDecoration(color: pct == 100 ? C.success : null, gradient: pct == 100 ? null : G.brand)),
               ),
             ),
             if (tip != null) ...[
@@ -666,8 +666,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   Icon(Icons.map_outlined, size: 20, color: err != null ? C.danger : C.muted),
                   const SizedBox(width: 12),
                   Expanded(child: Text(_state.isEmpty ? 'Choose your state' : _state, style: _state.isEmpty ? _Field.hintStyle : _Field.valueStyle)),
-                  if (ok) ...[const Icon(Icons.check_circle_sharp, size: 18, color: C.success), const SizedBox(width: 6)],
-                  const Icon(Icons.keyboard_arrow_down_sharp, color: C.muted),
+                  if (ok) ...[Icon(Icons.check_circle_sharp, size: 18, color: C.success), const SizedBox(width: 6)],
+                  Icon(Icons.keyboard_arrow_down_sharp, color: C.muted),
                 ]),
               ),
             ),
@@ -688,7 +688,7 @@ class _Section extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(top: S.xl, bottom: S.md),
         child: Row(children: [
-          Container(width: 3, height: 14, color: C.brand),
+          Container(width: 3, height: 14, decoration: const BoxDecoration(gradient: G.brand)),
           const SizedBox(width: S.sm),
           Semantics(header: true, child: Text(text, style: T.overline.copyWith(fontSize: 12, color: C.inkSoft))),
         ]),
@@ -732,10 +732,10 @@ class _Field extends StatelessWidget {
   final List<TextInputFormatter>? formatters;
   final TextCapitalization capitalization;
 
-  static final labelStyle = T.caption.copyWith(fontSize: 12.5, color: C.inkSoft, fontWeight: FontWeight.w600);
-  static final valueStyle = T.body.copyWith(fontSize: 14, color: C.ink, fontWeight: FontWeight.w600);
-  static final hintStyle = T.body.copyWith(fontSize: 14, color: C.faint);
-  static final errorStyle = T.caption.copyWith(fontSize: 12, color: C.danger, fontWeight: FontWeight.w600);
+  static TextStyle get labelStyle => T.caption.copyWith(fontSize: 12.5, color: C.inkSoft, fontWeight: FontWeight.w600);
+  static TextStyle get valueStyle => T.body.copyWith(fontSize: 14, color: C.ink, fontWeight: FontWeight.w600);
+  static TextStyle get hintStyle => T.body.copyWith(fontSize: 14, color: C.faint);
+  static TextStyle get errorStyle => T.caption.copyWith(fontSize: 12, color: C.danger, fontWeight: FontWeight.w600);
 
   @override
   Widget build(BuildContext context) {
@@ -775,7 +775,7 @@ class _Field extends StatelessWidget {
             ),
             prefixIconColor: iconColor,
             prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-            suffixIcon: ok ? const Icon(Icons.check_circle_sharp, size: 18, color: C.success) : null,
+            suffixIcon: ok ? Icon(Icons.check_circle_sharp, size: 18, color: C.success) : null,
             suffixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 0),
             enabledBorder: border(error != null ? C.danger : C.lineStrong),
             focusedBorder: border(error != null ? C.danger : C.brand, 1.5),

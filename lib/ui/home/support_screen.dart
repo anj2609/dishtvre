@@ -12,7 +12,6 @@ import '../setup_box/setup_box_screens.dart';
 import '../widgets/widgets.dart';
 
 const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const _whatsapp = Color(0xFF25A55F);
 
 class ContactSupportScreen extends StatelessWidget {
   const ContactSupportScreen({super.key});
@@ -31,13 +30,12 @@ class ContactSupportScreen extends StatelessWidget {
           padding: _pad(ctx),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             for (final n in numbers)
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: S.md),
-                decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.line))),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: S.sm),
                 child: Row(children: [
-                  const Icon(Icons.phone_outlined, color: C.brand, size: 24),
+                  Icon(Icons.phone_outlined, color: C.ink, size: 22),
                   const SizedBox(width: S.md),
-                  Expanded(child: Text(n, style: T.title.copyWith(fontSize: 19))),
+                  Expanded(child: Text(n, style: T.title.copyWith(fontSize: 17, fontWeight: FontWeight.w600))),
                   InkWell(
                     onTap: () {
                       Navigator.of(ctx).pop();
@@ -45,15 +43,15 @@ class ContactSupportScreen extends StatelessWidget {
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: S.xl, vertical: 10),
-                      decoration: BoxDecoration(border: Border.all(color: C.brand, width: 1.5)),
-                      child: Text('Call', style: T.item.copyWith(color: C.brand)),
+                      decoration: const BoxDecoration(gradient: G.brand),
+                      child: Text('Call', style: T.label.copyWith(fontSize: 13.5, fontWeight: FontWeight.w600, color: Colors.white)),
                     ),
                   ),
                 ]),
               ),
             const SizedBox(height: S.md),
             Row(children: [
-              const Icon(Icons.info_outline, size: 20, color: C.muted),
+              Icon(Icons.info_outline, size: 20, color: C.muted),
               const SizedBox(width: S.sm),
               Text('Local call charges apply.', style: T.caption.copyWith(fontSize: 14)),
             ]),
@@ -101,7 +99,7 @@ class ContactSupportScreen extends StatelessWidget {
 
     final touch = [
       (Icons.phone_outlined, C.brand, '24 × 7 Call Support', 'Talk to our support team anytime, day or night.', () => _callSheet(context, '24 × 7 Call Support', const ['+91 95017 95017', '1800 120 3474'])),
-      (Icons.chat_outlined, _whatsapp, 'WhatsApp Support', 'Chat with us on WhatsApp for quick assistance.', () => _toast(context, 'Opening WhatsApp...')),
+      (Icons.chat_outlined, C.brand, 'WhatsApp Support', 'Chat with us on WhatsApp for quick assistance.', () => _toast(context, 'Opening WhatsApp...')),
       (Icons.schedule_outlined, C.violet, 'Request a Callback', 'Give us a missed call. Our team will call you back.', () => _toast(context, 'Callback requested. We will call you shortly.')),
     ];
     final more = [
@@ -138,10 +136,9 @@ class ContactSupportScreen extends StatelessWidget {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: S.sm),
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Text(c.label, style: T.label.copyWith(color: C.ink, fontWeight: FontWeight.w800)),
-                            Text('  ·  VC ', style: T.caption),
-                            Text(c.vcPretty, style: T.label.copyWith(color: C.ink, fontWeight: FontWeight.w800)),
-                            if (app.connections.length > 1) const Icon(Icons.keyboard_arrow_down_sharp, color: C.ink, size: 20),
+                            Text(c.label, style: T.label.copyWith(fontSize: 13, color: C.ink, fontWeight: FontWeight.w600)),
+                            Text('  ·  VC ${c.vcPretty}', style: T.caption.copyWith(fontSize: 12.5, color: C.muted)),
+                            if (app.connections.length > 1) Icon(Icons.keyboard_arrow_down_sharp, color: C.muted, size: 20),
                           ]),
                         ),
                       ),
@@ -149,34 +146,31 @@ class ContactSupportScreen extends StatelessWidget {
                   ),
                 if (c != null)
                   Container(
-                    margin: const EdgeInsets.only(top: S.xs, bottom: S.lg),
-                    padding: const EdgeInsets.all(S.lg),
-                    color: const Color(0xFFD9552B),
+                    margin: const EdgeInsets.only(top: S.xs),
+                    padding: const EdgeInsets.all(S.lg + 2),
+                    decoration: const BoxDecoration(gradient: G.brand),
                     child: IntrinsicHeight(
                       child: Row(children: [
-                        const Icon(Icons.tv_sharp, color: Colors.white, size: 30),
-                        const SizedBox(width: S.md),
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text('CURRENT PACK', style: T.overline.copyWith(color: const Color(0xD9FFFFFF))),
-                            const SizedBox(height: 2),
-                            Text(c.planName, maxLines: 2, overflow: TextOverflow.ellipsis, style: T.title.copyWith(color: Colors.white, fontSize: 18)),
+                            Text('Current pack', style: T.caption.copyWith(fontSize: 12, color: const Color(0xD9FFFFFF))),
+                            const SizedBox(height: 4),
+                            Text(c.planName, maxLines: 2, overflow: TextOverflow.ellipsis, style: T.title.copyWith(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
                           ]),
                         ),
-                        Container(width: 1, margin: const EdgeInsets.symmetric(horizontal: S.md), color: const Color(0x66FFFFFF)),
+                        Container(width: 1, margin: const EdgeInsets.symmetric(horizontal: S.lg), color: const Color(0x40FFFFFF)),
                         Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-                          Text('NEXT RECHARGE', style: T.overline.copyWith(color: const Color(0xD9FFFFFF))),
-                          const SizedBox(height: 2),
-                          Text('${c.switchOffDate.day} ${_months[c.switchOffDate.month - 1]}', style: T.title.copyWith(color: Colors.white, fontSize: 18)),
+                          Text('Next recharge', style: T.caption.copyWith(fontSize: 12, color: const Color(0xD9FFFFFF))),
+                          const SizedBox(height: 4),
+                          Text('${c.switchOffDate.day} ${_months[c.switchOffDate.month - 1]}', style: T.title.copyWith(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
                         ]),
                       ]),
                     ),
                   ),
-                const _Heading('GET IN TOUCH', C.brand),
-                for (final t in touch) _Row(icon: t.$1, color: t.$2, title: t.$3, note: t.$4, onTap: t.$5),
-                const SizedBox(height: S.lg),
-                const _Heading('MORE HELP', C.teal),
-                for (final t in more) _Row(icon: t.$1, color: t.$2, title: t.$3, note: t.$4, onTap: t.$5),
+                const _Heading('Get in touch'),
+                _Group([for (final t in touch) _Row(icon: t.$1, title: t.$3, note: t.$4, onTap: t.$5)]),
+                const _Heading('More help'),
+                _Group([for (final t in more) _Row(icon: t.$1, title: t.$3, note: t.$4, onTap: t.$5)]),
               ],
             ),
           ),
@@ -187,28 +181,31 @@ class ContactSupportScreen extends StatelessWidget {
 }
 
 class _Heading extends StatelessWidget {
-  const _Heading(this.text, this.color);
+  const _Heading(this.text);
   final String text;
-  final Color color;
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: S.xs),
-        child: Row(children: [
-          Container(width: 3, height: 12, color: color),
-          const SizedBox(width: S.sm),
-          Text(text, style: T.overline.copyWith(fontSize: 11.5)),
-          const SizedBox(width: S.sm),
-          const Expanded(child: Divider(height: 1, color: C.line)),
-        ]),
+        padding: const EdgeInsets.only(top: S.xxl, bottom: S.sm + 2),
+        child: Semantics(header: true, child: Text(text, style: T.section.copyWith(fontSize: 15, fontWeight: FontWeight.w700))),
       );
 }
 
+/// Rows straight on the page, like the side menu: no panel behind them and
+/// no lines between them; spacing does the work.
+class _Group extends StatelessWidget {
+  const _Group(this.rows);
+  final List<_Row> rows;
+
+  @override
+  Widget build(BuildContext context) => Column(children: rows);
+}
+
+/// A help row: white line icon, title, short grey note, faint chevron.
 class _Row extends StatelessWidget {
-  const _Row({required this.icon, required this.color, required this.title, required this.note, required this.onTap});
+  const _Row({required this.icon, required this.title, required this.note, required this.onTap});
 
   final IconData icon;
-  final Color color;
   final String title;
   final String note;
   final VoidCallback onTap;
@@ -220,20 +217,19 @@ class _Row extends StatelessWidget {
         child: ExcludeSemantics(
           child: InkWell(
             onTap: onTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: S.md),
-              decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.line))),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14),
               child: Row(children: [
-                SizedBox(width: 44, height: 44, child: Icon(icon, size: 28, color: color)),
-                const SizedBox(width: S.sm),
+                SizedBox(width: 30, child: Icon(icon, size: 22, color: C.ink)),
+                const SizedBox(width: S.md),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(title, style: T.item.copyWith(fontSize: 16)),
+                    Text(title, style: T.item.copyWith(fontSize: 14, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 2),
-                    Text(note, style: T.caption.copyWith(fontSize: 13)),
+                    Text(note, style: T.caption.copyWith(fontSize: 12, color: C.muted)),
                   ]),
                 ),
-                const Icon(Icons.chevron_right_sharp, color: C.faint),
+                Icon(Icons.chevron_right_sharp, color: C.faint, size: 20),
               ]),
             ),
           ),
@@ -243,7 +239,8 @@ class _Row extends StatelessWidget {
 
 const _states = ['Andhra Pradesh', 'Assam', 'Bihar', 'Delhi', 'Gujarat', 'Karnataka', 'Kerala', 'Maharashtra', 'Punjab', 'Rajasthan', 'Tamil Nadu', 'Telangana', 'Uttar Pradesh', 'West Bengal'];
 
-/// A labelled sharp text field used inside the support sheets.
+/// A labelled text field used inside the support sheets: an underline, no
+/// box.
 class _Field extends StatelessWidget {
   const _Field({required this.label, required this.child});
   final String label;
@@ -251,12 +248,11 @@ class _Field extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: T.caption.copyWith(fontSize: 13)),
+        Text(label, style: T.caption.copyWith(fontSize: 12, color: C.muted)),
         const SizedBox(height: 6),
         Container(
-          height: 54,
-          padding: const EdgeInsets.symmetric(horizontal: S.md),
-          decoration: BoxDecoration(color: C.surface, border: Border.all(color: C.cardEdge)),
+          height: 50,
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: C.lineStrong, width: 1.2))),
           alignment: Alignment.centerLeft,
           child: child,
         ),
@@ -340,10 +336,10 @@ class _NodalFormState extends State<_NodalForm> {
               onTap: () => Navigator.of(ctx).pop(st),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: S.md),
-                decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.line))),
+                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: C.line))),
                 child: Row(children: [
-                  Expanded(child: Text(st, style: T.item.copyWith(fontSize: 16))),
-                  if (st == _state) const Icon(Icons.check_sharp, color: C.brand),
+                  Expanded(child: Text(st, style: T.item.copyWith(fontSize: 14.5, fontWeight: FontWeight.w500))),
+                  if (st == _state) BrandShade(child: Icon(Icons.check_sharp, color: C.brand)),
                 ]),
               ),
             ),
@@ -363,21 +359,20 @@ class _NodalFormState extends State<_NodalForm> {
               label: 'State',
               child: Row(children: [
                 Expanded(child: Text(_state ?? 'Select state', style: T.item.copyWith(fontSize: 16, color: _state == null ? C.muted : C.ink))),
-                const Icon(Icons.keyboard_arrow_down_sharp, color: C.ink),
+                Icon(Icons.keyboard_arrow_down_sharp, color: C.ink),
               ]),
             ),
           ),
           if (_state != null) ...[
             const SizedBox(height: S.lg),
-            Container(
-              padding: const EdgeInsets.all(S.lg),
-              decoration: BoxDecoration(color: C.surface, border: Border(left: const BorderSide(color: C.brand, width: 3), top: const BorderSide(color: C.cardEdge), right: const BorderSide(color: C.cardEdge), bottom: const BorderSide(color: C.cardEdge))),
+            Padding(
+              padding: const EdgeInsets.only(top: S.xs),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('NODAL OFFICER · ${_state!.toUpperCase()}', style: T.overline),
+                Text('Nodal officer · $_state', style: T.caption.copyWith(fontSize: 12, color: C.muted)),
                 const SizedBox(height: S.sm),
-                Text('Customer Care Nodal Officer', style: T.item.copyWith(fontSize: 16)),
+                Text('Customer Care Nodal Officer', style: T.item.copyWith(fontSize: 15, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
-                Text('nodal.${_state!.toLowerCase().replaceAll(' ', '')}@dishtv.example', style: T.caption.copyWith(fontSize: 14, color: C.brand)),
+                BrandShade(child: Text('nodal.${_state!.toLowerCase().replaceAll(' ', '')}@dishtv.example', style: T.caption.copyWith(fontSize: 14, color: C.brand))),
                 Text('1800 120 3474', style: T.caption.copyWith(fontSize: 14, color: C.ink)),
               ]),
             ),

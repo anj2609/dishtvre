@@ -87,7 +87,7 @@ class _SuccessScreenState extends State<SuccessScreen> with SingleTickerProvider
                     // Receipt style: sections split by thin lines, no boxes or fills.
                     if (a != null) ...[
                       const SizedBox(height: S.xxl),
-                      const Divider(height: 1, thickness: 1, color: C.lineStrong),
+                      Divider(height: 1, thickness: 1, color: C.lineStrong),
                       _fade(
                           0.4,
                           Padding(
@@ -112,7 +112,7 @@ class _SuccessScreenState extends State<SuccessScreen> with SingleTickerProvider
                               ),
                             ]),
                           )),
-                      const Divider(height: 1, thickness: 1, color: C.lineStrong),
+                      Divider(height: 1, thickness: 1, color: C.lineStrong),
                       _fade(
                           0.5,
                           Padding(
@@ -125,7 +125,7 @@ class _SuccessScreenState extends State<SuccessScreen> with SingleTickerProvider
                               for (final i in a.removed) _line(Icons.remove_sharp, C.danger, 'Removed ${i.name}', logo: i.logoUrl, name: i.name),
                             ]),
                           )),
-                      const Divider(height: 1, thickness: 1, color: C.lineStrong),
+                      Divider(height: 1, thickness: 1, color: C.lineStrong),
                     ],
                     const SizedBox(height: S.lg),
                     _fade(
@@ -148,7 +148,7 @@ class _SuccessScreenState extends State<SuccessScreen> with SingleTickerProvider
   Widget _line(IconData icon, Color c, String text, {String? logo, String name = ''}) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 5),
         child: Row(children: [
-          Icon(icon, size: 18, color: c),
+          BrandShade(on: c == C.brand, child: Icon(icon, size: 18, color: c)),
           const SizedBox(width: S.sm),
           if (logo != null) ...[ChannelLogo(name: name, url: logo, size: 30), const SizedBox(width: S.sm)],
           Expanded(child: Text(text, style: T.body.copyWith(color: C.ink))),

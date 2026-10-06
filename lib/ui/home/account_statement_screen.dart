@@ -116,10 +116,9 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(S.page, S.xs, S.page, S.sm),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text(c.label, style: T.label.copyWith(color: C.ink, fontWeight: FontWeight.w800)),
-                      Text('  ·  VC ', style: T.caption),
-                      Text(c.vcPretty, style: T.label.copyWith(color: C.ink, fontWeight: FontWeight.w800)),
-                      if (app.connections.length > 1) const Icon(Icons.keyboard_arrow_down_sharp, color: C.ink, size: 20),
+                      Text(c.label, style: T.label.copyWith(fontSize: 13, color: C.ink, fontWeight: FontWeight.w600)),
+                      Text('  ·  VC ${c.vcPretty}', style: T.caption.copyWith(fontSize: 12.5, color: C.muted)),
+                      if (app.connections.length > 1) Icon(Icons.keyboard_arrow_down_sharp, color: C.muted, size: 20),
                     ]),
                   ),
                 ),
@@ -137,12 +136,12 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                     child: Container(
                       height: 52,
                       padding: const EdgeInsets.symmetric(horizontal: S.md),
-                      decoration: BoxDecoration(color: C.surface, border: Border.all(color: C.cardEdge)),
+                      color: C.surface,
                       child: Row(children: [
-                        const Icon(Icons.calendar_today_outlined, size: 20, color: C.ink),
+                        Icon(Icons.calendar_today_outlined, size: 19, color: C.ink),
                         const SizedBox(width: S.md),
-                        Expanded(child: Text(_month(_selectedMonth), style: T.item.copyWith(fontSize: 16))),
-                        const Icon(Icons.keyboard_arrow_down_sharp, color: C.ink),
+                        Expanded(child: Text(_month(_selectedMonth), style: T.item.copyWith(fontSize: 15, fontWeight: FontWeight.w600))),
+                        Icon(Icons.keyboard_arrow_down_sharp, color: C.muted),
                       ]),
                     ),
                   ),
@@ -157,8 +156,8 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                   child: Container(
                     width: 52,
                     height: 52,
-                    decoration: BoxDecoration(border: Border.all(color: C.brand, width: 1.5)),
-                    child: const Icon(Icons.file_download_outlined, color: C.brand),
+                    color: C.surface,
+                    child: BrandShade(child: Icon(Icons.file_download_outlined, color: C.brand)),
                   ),
                 ),
               ),
@@ -169,7 +168,7 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
             child: ListView.separated(
               padding: EdgeInsets.fromLTRB(S.page, 0, S.page, S.xxl + MediaQuery.paddingOf(context).bottom),
               itemCount: rows.length,
-              separatorBuilder: (_, __) => const Divider(height: 1, color: C.line),
+              separatorBuilder: (_, __) => Divider(height: 1, color: C.line),
               itemBuilder: (_, i) => _EntryRow(rows[i]),
             ),
           ),
@@ -179,8 +178,8 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
   }
 }
 
-/// Three solid tiles: amount added, amount deducted and balance left, in the same
-/// colours as the Home cards.
+/// One quiet panel with the month in three figures: added, deducted and
+/// balance left, split by thin dividers. Balance left is the bold one.
 class _Summary extends StatelessWidget {
   const _Summary(this.rows);
   final List<_Entry> rows;
@@ -189,26 +188,34 @@ class _Summary extends StatelessWidget {
   Widget build(BuildContext context) {
     final credits = rows.where((e) => e.amount > 0).fold<int>(0, (a, e) => a + e.amount);
     final charges = rows.where((e) => e.amount < 0).fold<int>(0, (a, e) => a - e.amount);
-    Widget tile(String label, String value, Color fill) => Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: S.md, vertical: S.md),
-            color: fill,
+    Widget fig(String label, String value, {bool strong = false}) => Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: S.md, vertical: 14),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(label, style: T.caption.copyWith(fontSize: 12, color: const Color(0xD9FFFFFF))),
-              const SizedBox(height: 2),
-              FittedBox(fit: BoxFit.scaleDown, child: Text(value, style: T.price.copyWith(fontSize: 19, color: Colors.white))),
+              Text(label, style: T.caption.copyWith(fontSize: 12, color: C.muted)),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(value, style: T.price.copyWith(fontSize: strong ? 19 : 16, fontWeight: strong ? FontWeight.w700 : FontWeight.w600, color: strong ? C.ink : C.inkSoft)),
+              ),
             ]),
           ),
         );
+    final rule = Padding(padding: EdgeInsets.symmetric(vertical: S.md), child: VerticalDivider(width: 1, thickness: 1, color: C.line));
     return Padding(
-      padding: const EdgeInsets.fromLTRB(S.page, 0, S.page, S.sm),
-      child: Row(children: [
-        tile('Added', rupees(credits), const Color(0xFF1F7A55)),
-        const SizedBox(width: S.sm),
-        tile('Deducted', rupees(charges), const Color(0xFFD9552B)),
-        const SizedBox(width: S.sm),
-        tile('Balance left', rupees(credits - charges), const Color(0xFF2F5FC4)),
-      ]),
+      padding: const EdgeInsets.fromLTRB(S.page, S.xs, S.page, S.md),
+      child: Container(
+        color: C.surface,
+        child: IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            fig('Added', rupees(credits)),
+            rule,
+            fig('Deducted', rupees(charges)),
+            rule,
+            fig('Balance left', rupees(credits - charges), strong: true),
+          ]),
+        ),
+      ),
     );
   }
 }
@@ -221,32 +228,34 @@ class _EntryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final credit = e.amount > 0;
     final accent = credit ? C.success : C.danger;
-    final (icon, tint) = switch (e.kind) {
-      _Kind.opening => (Icons.account_balance_wallet_outlined, C.cobalt),
-      _Kind.payment => (Icons.account_balance_wallet_outlined, C.success),
-      _Kind.subscription => (Icons.layers_outlined, C.violet),
-      _Kind.additional => (Icons.signal_cellular_alt_sharp, C.teal),
+    // White line icons; colour is kept for the amount (green in, red out).
+    final tint = C.inkSoft;
+    final icon = switch (e.kind) {
+      _Kind.opening || _Kind.payment => Icons.account_balance_wallet_outlined,
+      _Kind.subscription => Icons.layers_outlined,
+      _Kind.additional => Icons.signal_cellular_alt_sharp,
     };
     final sub = e.note == null ? _day(e.date) : '${e.note} · ${_day(e.date)}';
     final amount = '${credit ? '+' : '−'}${rupees(e.amount.abs())}';
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: S.md),
+      padding: const EdgeInsets.symmetric(vertical: 14),
       child: Row(children: [
-        SizedBox(width: 48, height: 48, child: Icon(icon, size: 26, color: tint)),
+        SizedBox(width: 36, child: Icon(icon, size: 22, color: tint)),
         const SizedBox(width: S.md),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(e.title, style: T.item.copyWith(fontSize: 15.5)),
-            Text(sub, style: T.caption.copyWith(fontSize: 13)),
+            Text(e.title, style: T.item.copyWith(fontSize: 14, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 2),
+            Text(sub, style: T.caption.copyWith(fontSize: 12, color: C.muted)),
           ]),
         ),
-        Text(amount, style: T.price.copyWith(fontSize: 17, color: accent)),
+        Text(amount, style: T.label.copyWith(fontSize: 14.5, fontWeight: FontWeight.w700, color: accent)),
       ]),
     );
   }
 }
 
-/// A selectable card in a picker sheet; the chosen one gets a brand outline.
+/// A selectable row in a picker sheet; the chosen one gets an orange check.
 class _Choice extends StatelessWidget {
   const _Choice({required this.title, required this.note, required this.selected, required this.onTap});
 
@@ -265,16 +274,16 @@ class _Choice extends StatelessWidget {
             onTap: onTap,
             child: Container(
               padding: const EdgeInsets.all(S.lg),
-              decoration: BoxDecoration(color: C.surface, border: Border.all(color: selected ? C.brand : C.cardEdge, width: selected ? 1.5 : 1)),
+              color: C.surface,
               child: Row(children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(title, style: T.item.copyWith(fontSize: 17)),
+                    Text(title, style: T.item.copyWith(fontSize: 15, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 2),
-                    Text(note, style: T.caption.copyWith(fontSize: 13)),
+                    Text(note, style: T.caption.copyWith(fontSize: 12, color: C.muted)),
                   ]),
                 ),
-                if (selected) const Icon(Icons.check_sharp, color: C.brand),
+                if (selected) BrandShade(child: Icon(Icons.check_sharp, color: C.brand)),
               ]),
             ),
           ),

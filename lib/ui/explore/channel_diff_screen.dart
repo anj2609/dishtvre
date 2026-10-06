@@ -127,7 +127,7 @@ class _ChannelDiffScreenState extends State<ChannelDiffScreen> {
                       padding: EdgeInsets.zero,
                       child: Column(children: [
                         for (final (i, c) in byGenre[g]!.indexed) ...[
-                          if (i > 0) const Divider(height: 1, color: C.line, indent: 66),
+                          if (i > 0) Divider(height: 1, color: C.line, indent: 66),
                           ChannelRow(channel: c),
                         ],
                       ]),
@@ -163,7 +163,7 @@ class ChannelRow extends StatelessWidget {
             Text([c.genre, if (c.language.isNotEmpty) c.language].join(' | '), style: T.caption),
           ]),
         ),
-        if (c.isHd) Text('HD', style: T.overline.copyWith(fontSize: 10.5, color: C.brandDeep)),
+        if (c.isHd) BrandShade(child: Text('HD', style: T.overline.copyWith(fontSize: 10.5, color: C.brandDeep))),
         for (final t in tags) ...[const SizedBox(width: 6), t],
       ]),
     );

@@ -1,9 +1,9 @@
 // Profile: who the account belongs to, how to reach them, their TVs, and the
 // warranty on each TV's equipment. Edit Profile sits at the bottom.
 //
-// Flat and sharp like the rest of the app: outlined panels, a solid orange
-// accent (avatar, section markers, icons, links), and colour for status only
-// where it means something (TV state, warranty left or expired).
+// Quiet like Home: dark panels without outlines, white line icons, grey
+// labels, and orange only for the selected TV and actions. Colour for status
+// only where it means something (TV state, warranty left or expired).
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -12,7 +12,6 @@ import '../../app/theme.dart';
 import '../../data/models.dart';
 import '../../state/app_store.dart';
 import '../widgets/widgets.dart';
-import 'connection_card.dart';
 import 'edit_profile_screen.dart';
 import 'home_screen.dart';
 
@@ -117,9 +116,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ('Active TVs', '$active of ${tvs.length}'),
     ];
     return Container(
-      decoration: BoxDecoration(border: Border.all(color: C.cardEdge)),
+      color: C.surface,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Container(height: 4, color: C.brand),
         Padding(
           padding: const EdgeInsets.fromLTRB(S.lg, S.lg, S.lg, S.lg),
           child: Row(children: [
@@ -127,10 +125,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(width: S.lg),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(sub.name, style: T.title.copyWith(fontSize: 21)),
+                Text(sub.name, style: T.title.copyWith(fontSize: 21, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
                 Row(children: [
-                  const Icon(Icons.verified_user_outlined, size: 15, color: C.brand),
+                  Icon(Icons.verified_user_outlined, size: 15, color: C.muted),
                   const SizedBox(width: 5),
                   Flexible(child: Text(sub.role, style: T.caption.copyWith(fontSize: 13, color: C.inkSoft))),
                 ]),
@@ -138,18 +136,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ]),
         ),
-        const Divider(height: 1, color: C.line),
+        Divider(height: 1, color: C.line, indent: S.lg, endIndent: S.lg),
         IntrinsicHeight(
           child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             for (final (i, f) in facts.indexed) ...[
-              if (i > 0) const VerticalDivider(width: 1, thickness: 1, color: C.line),
+              if (i > 0) Padding(padding: EdgeInsets.symmetric(vertical: S.md), child: VerticalDivider(width: 1, thickness: 1, color: C.line)),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: S.md, horizontal: S.sm),
                   child: Column(children: [
-                    FittedBox(fit: BoxFit.scaleDown, child: Text(f.$2, maxLines: 1, style: T.item.copyWith(fontSize: 16))),
-                    const SizedBox(height: 2),
-                    Text(f.$1, textAlign: TextAlign.center, style: T.caption.copyWith(fontSize: 11.5)),
+                    FittedBox(fit: BoxFit.scaleDown, child: Text(f.$2, maxLines: 1, style: T.item.copyWith(fontSize: 16, fontWeight: FontWeight.w700))),
+                    const SizedBox(height: 3),
+                    Text(f.$1, textAlign: TextAlign.center, style: T.caption.copyWith(fontSize: 11.5, color: C.muted)),
                   ]),
                 ),
               ),
@@ -178,22 +176,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.fromLTRB(S.md, S.md, S.md, S.md),
             decoration: BoxDecoration(border: Border(left: BorderSide(color: selected ? C.brand : Colors.transparent, width: 3))),
             child: Row(children: [
-              // Solid square in the TV's Home card colour.
-              Container(
-                width: 34,
-                height: 34,
-                color: cardColorOf(t.status),
-                child: const Icon(Icons.tv_sharp, size: 18, color: Colors.white),
-              ),
+              SizedBox(width: 28, child: Icon(Icons.tv_sharp, size: 22, color: C.ink)),
               const SizedBox(width: S.md),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(t.label, style: _valueStyle),
-                  Text(['VC ${t.vcPretty}', if (t.isMultiTv) 'Multi TV', t.isHd ? 'HD' : 'SD'].join('  |  '), style: T.caption.copyWith(fontSize: 12)),
+                  const SizedBox(height: 2),
+                  Text(['VC ${t.vcPretty}', if (t.isMultiTv) 'Multi TV', t.isHd ? 'HD' : 'SD'].join('  ·  '), style: T.caption.copyWith(fontSize: 12, color: C.muted)),
                 ]),
               ),
               const SizedBox(width: S.sm),
-              Text(statusText, style: T.label.copyWith(fontSize: 12.5, color: statusColor)),
+              Container(width: 6, height: 6, margin: const EdgeInsets.only(right: 5), decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+              Text(statusText, style: T.caption.copyWith(fontSize: 12, color: C.inkSoft)),
             ]),
           ),
         ),
@@ -210,11 +204,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ]),
       const SizedBox(height: S.md),
       Row(children: [
-        const Icon(Icons.info_outline_sharp, size: 15, color: C.muted),
+        Icon(Icons.info_outline_sharp, size: 15, color: C.muted),
         const SizedBox(width: 6),
         Expanded(
-          child: Text('${w.kind}  |  Installed ${_date(w.installedOn)}  |  $covered of ${w.items.length} parts covered',
-              style: T.caption.copyWith(fontSize: 12.5)),
+          child: Text('${w.kind}  ·  Installed ${_date(w.installedOn)}  ·  $covered of ${w.items.length} parts covered',
+              style: T.caption.copyWith(fontSize: 12, color: C.muted)),
         ),
       ]),
       Align(
@@ -222,8 +216,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: TextButton.icon(
           onPressed: () => comingSoon(context, 'Warranty claims'),
           style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 0, vertical: S.sm), foregroundColor: C.brand),
-          icon: const Icon(Icons.build_outlined, size: 17),
-          label: Text('Raise a warranty claim', style: T.label.copyWith(color: C.brand)),
+          icon: const BrandShade(child: Icon(Icons.build_outlined, size: 17)),
+          label: BrandShade(child: Text('Raise a warranty claim', style: T.label.copyWith(color: C.brand))),
         ),
       ),
     ]);
@@ -236,7 +230,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       'Remote control' => Icons.settings_remote_outlined,
       _ => Icons.satellite_alt_outlined,
     };
-    final title = [item.part.toUpperCase(), if (item.model != null) item.model!].join('  |  ');
+    final title = [item.part, if (item.model != null) item.model!].join('  ·  ');
     final total = _monthsBetween(installed, item.until).clamp(1, 1200);
     final left = _monthsBetween(now, item.until);
     final share = active ? (left / total).clamp(0.0, 1.0) : 0.0;
@@ -259,12 +253,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  Expanded(child: Text(title, style: _labelStyle)),
+                  Expanded(child: Text(title, style: T.caption.copyWith(fontSize: 12, color: C.muted))),
                   const SizedBox(width: S.sm),
                   // Status as plain coloured text: green while covered, amber once ended.
-                  Icon(active ? Icons.check_sharp : Icons.history_sharp, size: 15, color: active ? C.success : C.warning),
-                  const SizedBox(width: 3),
-                  Text(active ? 'Active' : 'Expired', style: T.label.copyWith(fontSize: 12.5, color: active ? C.success : C.warning)),
+                  Container(width: 6, height: 6, margin: const EdgeInsets.only(right: 5), decoration: BoxDecoration(color: active ? C.success : C.warning, shape: BoxShape.circle)),
+                  Text(active ? 'Active' : 'Expired', style: T.caption.copyWith(fontSize: 12, color: C.inkSoft)),
                 ]),
                 const SizedBox(height: 4),
                 Text(when, style: _valueStyle),
@@ -288,12 +281,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 }
 
 /// The one size for every tile's main text on this page.
-final _valueStyle = T.body.copyWith(fontSize: 13.5, height: 1.35, color: C.ink, fontWeight: FontWeight.w600);
+TextStyle get _valueStyle => T.body.copyWith(fontSize: 13.5, height: 1.35, color: C.ink, fontWeight: FontWeight.w600);
 
-/// The one size for every tile's small label.
-final _labelStyle = T.overline.copyWith(fontSize: 10.5);
-
-/// Section heading with a short orange marker, and optional text on the right.
+/// Section heading: small grey text, and optional text on the right.
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle(this.text, {this.trailing});
 
@@ -302,50 +292,44 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(top: S.xl + 4, bottom: S.md),
+        padding: const EdgeInsets.only(top: S.xxl, bottom: S.sm + 2),
         child: Row(children: [
-          Container(width: 3, height: 14, color: C.brand),
-          const SizedBox(width: S.sm),
-          Expanded(child: Semantics(header: true, child: Text(text, style: T.overline.copyWith(fontSize: 12, color: C.inkSoft)))),
+          Expanded(child: Semantics(header: true, child: Text(_sentence(text), style: T.section.copyWith(fontSize: 15, fontWeight: FontWeight.w700)))),
           if (trailing != null)
             Flexible(
-              child: Align(alignment: Alignment.centerRight, child: Text(trailing!, textAlign: TextAlign.end, style: T.caption.copyWith(fontSize: 12.5))),
+              child: Align(alignment: Alignment.centerRight, child: Text(trailing!, textAlign: TextAlign.end, style: T.caption.copyWith(fontSize: 12, color: C.faint))),
             ),
         ]),
       );
+
+  static String _sentence(String t) => t.isEmpty ? t : t[0] + t.substring(1).toLowerCase().replaceAll('tvs', 'TVs');
 }
 
-/// An outlined panel whose rows are split by thin lines.
+/// A quiet panel (no outline) whose rows are split by thin, inset lines.
 class _Panel extends StatelessWidget {
   const _Panel({required this.children});
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(border: Border.all(color: C.cardEdge)),
+        color: C.surface,
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           for (final (i, c) in children.indexed) ...[
-            if (i > 0) const Divider(height: 1, color: C.line),
+            if (i > 0) Divider(height: 1, color: C.line, indent: 54),
             c,
           ],
         ]),
       );
 }
 
-/// An outlined square with an orange icon, used beside each detail.
+/// A white line icon beside each detail, no box.
 class _IconBox extends StatelessWidget {
   const _IconBox(this.icon);
   final IconData icon;
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: 34,
-        height: 34,
-        decoration: BoxDecoration(border: Border.all(color: C.lineStrong)),
-        child: Icon(icon, size: 18, color: C.brand),
-      );
+  Widget build(BuildContext context) => SizedBox(width: 28, height: 28, child: Icon(icon, size: 21, color: C.ink));
 }
-
 class _InfoRow extends StatelessWidget {
   const _InfoRow({required this.icon, required this.label, required this.value, this.note});
 
@@ -366,10 +350,10 @@ class _InfoRow extends StatelessWidget {
               const SizedBox(width: S.md),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(label, style: _labelStyle),
+                  Text(label[0] + label.substring(1).toLowerCase(), style: T.caption.copyWith(fontSize: 12, color: C.muted)),
                   const SizedBox(height: 3),
                   Text(value, style: _valueStyle),
-                  if (note != null) ...[const SizedBox(height: 2), Text(note!, style: T.caption.copyWith(fontSize: 11.5))],
+                  if (note != null) ...[const SizedBox(height: 2), Text(note!, style: T.caption.copyWith(fontSize: 11.5, color: C.faint))],
                 ]),
               ),
             ]),

@@ -108,16 +108,16 @@ class _ChangePackScreenState extends State<ChangePackScreen> {
         message: 'Switch TV',
         child: Material(
           type: MaterialType.transparency,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: const BorderSide(color: Colors.white, width: 1.2)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: C.ink, width: 1.2)),
           child: InkWell(
             customBorder: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             onTap: _switchTv,
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 12, vertical: compact ? 10 : 9),
               child: compact
-                  ? const Icon(Icons.swap_horiz_sharp, size: 20, color: C.ink)
+                  ? Icon(Icons.swap_horiz_sharp, size: 20, color: C.ink)
                   : Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.swap_horiz_sharp, size: 18, color: C.ink),
+                      Icon(Icons.swap_horiz_sharp, size: 18, color: C.ink),
                       const SizedBox(width: 4),
                       Flexible(child: Text('Switch TV', maxLines: 1, softWrap: false, style: T.label)),
                     ]),
@@ -147,8 +147,8 @@ class _ChangePackScreenState extends State<ChangePackScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Expanded(child: Text('CURRENT PACK', style: T.overline)),
-                Text('Your plan', style: T.label.copyWith(color: C.brandDeep, fontSize: 12)),
-                const Icon(Icons.chevron_right_sharp, color: C.brandDeep, size: 18),
+                BrandShade(child: Text('Your plan', style: T.label.copyWith(color: C.brandDeep, fontSize: 12))),
+                BrandShade(child: Icon(Icons.chevron_right_sharp, color: C.brandDeep, size: 18)),
               ]),
               Text(base?.name ?? c.planName, style: T.item.copyWith(fontSize: 16)),
               Text(
@@ -168,15 +168,15 @@ class _ChangePackScreenState extends State<ChangePackScreen> {
           padding: const EdgeInsets.all(S.md + 2),
           decoration: BoxDecoration(color: C.cardTop, border: Border.all(color: C.brand)),
           child: Row(children: [
-            const Icon(Icons.pending_actions_sharp, color: C.brandDeep),
+            BrandShade(child: Icon(Icons.pending_actions_sharp, color: C.brandDeep)),
             const SizedBox(width: S.md),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${plan.changeCount} ${plan.changeCount == 1 ? 'change' : 'changes'} not applied yet', style: T.item.copyWith(color: C.brandDeep)),
+                BrandShade(child: Text('${plan.changeCount} ${plan.changeCount == 1 ? 'change' : 'changes'} not applied yet', style: T.item.copyWith(color: C.brandDeep))),
                 Text('New bill about ${rupees(plan.estimate)}/month | Tap to review', style: T.caption),
               ]),
             ),
-            const Icon(Icons.chevron_right_sharp, color: C.brandDeep),
+            BrandShade(child: Icon(Icons.chevron_right_sharp, color: C.brandDeep)),
           ]),
         ),
       );

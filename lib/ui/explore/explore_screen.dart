@@ -175,9 +175,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.tune_sharp, size: 18, color: n > 0 ? C.brand : C.ink),
+            BrandShade(on: n > 0, child: Icon(Icons.tune_sharp, size: 18, color: n > 0 ? C.brand : C.ink)),
             const SizedBox(width: 6),
-            Text(n > 0 ? 'Filters ($n)' : 'Filters', style: T.label.copyWith(color: n > 0 ? C.brand : C.ink)),
+            BrandShade(on: n > 0, child: Text(n > 0 ? 'Filters ($n)' : 'Filters', style: T.label.copyWith(color: n > 0 ? C.brand : C.ink))),
           ]),
         ),
       ),
@@ -206,13 +206,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 onDeleted: () => setState(() => _filter = without),
                 deleteIcon: const Icon(Icons.close_sharp, size: 16),
                 backgroundColor: C.surface,
-                side: const BorderSide(color: C.lineStrong),
+                side: BorderSide(color: C.lineStrong),
                 shape: const RoundedRectangleBorder(),
               ),
             ),
           TextButton(
             onPressed: () => setState(() => _filter = PackFilter.none),
-            child: Text('Clear all', style: T.label.copyWith(color: C.brandDeep)),
+            child: BrandShade(child: Text('Clear all', style: T.label.copyWith(color: C.brandDeep))),
           ),
         ],
       ),
@@ -296,7 +296,7 @@ class _PackCard extends StatelessWidget {
                   child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        if (flag != null) Text(flag.$1, style: T.overline.copyWith(fontSize: 10, color: flag.$2)),
+                        if (flag != null) BrandShade(on: flag.$2 == C.brand, child: Text(flag.$1, style: T.overline.copyWith(fontSize: 10, color: flag.$2))),
                         Text(p.name, style: T.item.copyWith(fontSize: 15.5, height: 1.25)),
                         Text(
                           '${p.channels} channels${p.hdChannels > 0 ? ' | ${p.hdChannels} HD' : ''} | ${p.languages.join(' | ')}',
@@ -338,7 +338,7 @@ class _PackCard extends StatelessWidget {
                 if (p.lockIn || p.ruleMessage != null) ...[
                   const SizedBox(height: 6),
                   Row(children: [
-                    const Icon(Icons.info_outline_sharp, size: 14, color: C.muted),
+                    Icon(Icons.info_outline_sharp, size: 14, color: C.muted),
                     const SizedBox(width: 4),
                     Expanded(child: Text(p.ruleMessage ?? 'A lock-in period applies.', style: T.caption.copyWith(fontSize: 11.5))),
                   ]),
@@ -359,8 +359,8 @@ class _PackCard extends StatelessWidget {
                           minimumSize: const Size(0, 40),
                           shape: const RoundedRectangleBorder(),
                         ),
-                        icon: Icon(comparing ? Icons.check_sharp : Icons.compare_arrows_sharp, size: 17),
-                        label: Text(comparing ? 'Comparing' : 'Compare', style: T.label.copyWith(color: comparing ? C.brand : C.ink)),
+                        icon: BrandShade(on: comparing, child: Icon(comparing ? Icons.check_sharp : Icons.compare_arrows_sharp, size: 17)),
+                        label: BrandShade(on: comparing, child: Text(comparing ? 'Comparing' : 'Compare', style: T.label.copyWith(color: comparing ? C.brand : C.ink))),
                       ),
                     ),
                   ),
@@ -378,8 +378,8 @@ class _PackCard extends StatelessWidget {
                           shape: const RoundedRectangleBorder(),
                         ),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Text('Details', style: T.label.copyWith(color: C.brand)),
-                          const Icon(Icons.chevron_right_sharp, size: 18, color: C.brand),
+                          BrandShade(child: Text('Details', style: T.label.copyWith(color: C.brand))),
+                          BrandShade(child: Icon(Icons.chevron_right_sharp, size: 18, color: C.brand)),
                         ]),
                       ),
                     ),

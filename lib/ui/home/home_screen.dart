@@ -1,11 +1,16 @@
-// Home: who you are, your connections, four quick actions and one offer.
-// Everything else lives one tap away in All services, so Home stays calm.
+// Home: who you are and what needs attention, your TV cards with the channels
+// on the one showing, the everyday services in three tabs, and offers.
+// Everything else lives one tap away in All services.
 
+import 'dart:async';
+
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/theme.dart';
+import '../../app/theme_switch.dart';
 import '../../data/models.dart';
 import '../../state/app_store.dart';
 import '../../state/plan_store.dart';
@@ -14,15 +19,30 @@ import '../change_pack/plan_screen.dart';
 import '../add_remove/add_remove_screen.dart';
 import '../widgets/showtime.dart';
 import '../widgets/widgets.dart';
+import '../hd/upgrade_hd_screens.dart';
+import '../ott/add_ott_screen.dart';
+import '../recharge/autopay_screen.dart';
+import '../recharge/friends_family_screen.dart';
+import '../recharge/pay_later_screen.dart';
+import '../recharge/recharge_screen.dart';
+import '../vacation/vacation_mode_screen.dart';
+import 'account_statement_screen.dart';
+import 'bills_queries_screen.dart';
 import 'all_services_screen.dart';
 import 'app_drawer.dart';
 import 'connection_card.dart';
+import 'language_screen.dart';
 import 'profile_screen.dart';
+import 'restore_signal_screen.dart';
+import 'tv_error_screen.dart';
+import 'support_screen.dart';
+import 'update_mobile_screen.dart';
 
 void comingSoon(BuildContext context, String what) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text('$what is coming in the next phase of the redesign.')));
+    ..showSnackBar(SnackBar(
+        content: Text('$what is coming in the next phase of the redesign.')));
 }
 
 class HomeScreen extends StatefulWidget {
@@ -33,9 +53,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _pages = PageController(viewportFraction: 0.9);
   int _nav = 0;
-  bool _planRequested = false;
+  _Tab _tab = _Tab.packs;
+  final _pages = PageController(viewportFraction: 0.86);
   final _scaffold = GlobalKey<ScaffoldState>();
 
   @override
@@ -56,7 +76,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String get _greeting {
     final h = DateTime.now().hour;
-    return h < 12 ? 'Good morning,' : (h < 17 ? 'Good afternoon,' : 'Good evening,');
+    return h < 12
+        ? 'Good morning,'
+        : (h < 17 ? 'Good afternoon,' : 'Good evening,');
   }
 
   bool _searching = false;
@@ -76,7 +98,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _open(Widget screen) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+  void _open(Widget screen) =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
 
   // My Pack: what's in the selected TV's plan.
   void _myPack() {
@@ -89,14 +112,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final s = context.watch<AppStore>();
     final plan = context.watch<PlanStore>();
-    // Load the selected TV's plan once so Home can show its channels.
-    if (plan.connection == null && s.connection != null && !_planRequested) {
-      _planRequested = true;
-      final c = s.connection!;
-      WidgetsBinding.instance.addPostFrameCallback((_) => plan.open(c));
+    // Keep the loaded plan on the selected TV (it can change from other
+    // screens too) so the channel strip shows that TV's channels.
+    final sel = s.connection;
+    if (sel != null && plan.connection?.vc != sel.vc) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && plan.connection?.vc != sel.vc) plan.open(sel);
+      });
     }
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: systemBars,
       child: Scaffold(
         key: _scaffold,
         drawer: const AppDrawer(),
@@ -109,24 +134,28 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: C.brand,
                   onRefresh: s.load,
                   child: ListView(
-                    padding: const EdgeInsets.only(bottom: S.xxl),
+                    padding: const EdgeInsets.only(bottom: 40),
                     children: [
                       _topBar(s),
-                      Reveal(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(S.page, S.lg, S.page, S.lg),
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(_greeting, style: T.body.copyWith(fontSize: 13, color: C.muted)),
-                            Text(s.subscriber?.name ?? '', style: T.title.copyWith(fontSize: 20, height: 1.2)),
-                          ]),
-                        ),
-                      ),
+                      Reveal(child: _greetingBlock(s)),
                       // Always one child here, so the list below never shifts.
-                      AnimatedSize(duration: const Duration(milliseconds: 180), alignment: Alignment.topCenter, child: _searching ? _searchBar() : const SizedBox(width: double.infinity)),
-                      if (s.loading && s.connections.isEmpty) const Skeleton(height: 240) else Reveal(order: 2, child: _connections(s)),
-                      Reveal(order: 3, child: _quickActions()),
-                      Reveal(order: 4, child: _onYourTv(plan)),
-                      Reveal(order: 5, child: _offer()),
+                      AnimatedSize(
+                          duration: const Duration(milliseconds: 180),
+                          alignment: Alignment.topCenter,
+                          child: _searching
+                              ? _searchBar()
+                              : const SizedBox(width: double.infinity)),
+                      if (s.loading && s.connections.isEmpty)
+                        const Skeleton(height: 240)
+                      else
+                        Reveal(
+                            order: 2,
+                            child: Column(children: [
+                              _connections(s),
+                              _channelStrip(s, plan)
+                            ])),
+                      Reveal(order: 3, child: _services()),
+                      Reveal(order: 4, child: _offer()),
                     ],
                   ),
                 ),
@@ -139,30 +168,46 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Menu, wordmark, and four actions at one size and stroke. No circle
+  /// behind the menu, so nothing in the bar is heavier than the logo.
   Widget _topBar(AppStore s) => Padding(
-        padding: const EdgeInsets.fromLTRB(S.lg, S.sm, S.lg, 0),
+        padding: const EdgeInsets.fromLTRB(S.sm, S.md, S.page, 0),
         child: Row(children: [
-          RoundIconButton(icon: Icons.menu_sharp, label: 'Menu', onTap: () => _scaffold.currentState?.openDrawer()),
-          const SizedBox(width: S.md),
+          _plainIcon(Icons.menu_sharp, 'Menu',
+              () => _scaffold.currentState?.openDrawer()),
+          const SizedBox(width: 2),
           Expanded(
             child: Align(
               alignment: Alignment.centerLeft,
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                child: Text('dishtv', style: T.title.copyWith(color: C.brand, fontSize: 24, letterSpacing: -0.8)),
+                child: BrandShade(child: Text('dishtv',
+                    style: T.title.copyWith(
+                        color: C.brand, fontSize: 24, letterSpacing: -0.8))),
               ),
             ),
           ),
-          _plainIcon(Icons.search_sharp, _searching ? 'Close search' : 'Search', _toggleSearch, color: _searching ? C.brand : C.ink),
-          _plainIcon(Icons.notifications_none_sharp, 'Notifications', () => comingSoon(context, 'Notifications'), badge: true),
-          const SizedBox(width: 4),
+          _plainIcon(Icons.search_sharp, _searching ? 'Close search' : 'Search',
+              _toggleSearch,
+              color: _searching ? C.brand : C.ink),
+          _plainIcon(Icons.translate_sharp, 'Choose language',
+              () => _open(const LanguageScreen())),
+          _plainIcon(Icons.notifications_none_sharp, 'Notifications',
+              () => comingSoon(context, 'Notifications'),
+              badge: true),
+          const SizedBox(width: 6),
           // Your photo (or initials); opens Profile.
           Tooltip(
             message: 'Profile',
             child: InkResponse(
-              onTap: s.subscriber == null ? null : () => _open(const ProfileScreen()),
-              radius: 24,
-              child: Avatar(initials: s.subscriber?.initials ?? '', photo: s.subscriber?.photo, size: 40),
+              onTap: s.subscriber == null
+                  ? null
+                  : () => _open(const ProfileScreen()),
+              radius: 22,
+              child: Avatar(
+                  initials: s.subscriber?.initials ?? '',
+                  photo: s.subscriber?.photo,
+                  size: 36),
             ),
           ),
         ]),
@@ -175,9 +220,10 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Container(
           height: 52,
           padding: const EdgeInsets.only(left: S.md + 2),
-          decoration: BoxDecoration(color: C.sunken, border: Border.all(color: C.brand, width: 1.2)),
+          decoration: BoxDecoration(
+              color: C.sunken, border: Border.all(color: C.brand, width: 1.2)),
           child: Row(children: [
-            const Icon(Icons.search_sharp, size: 22, color: C.brand),
+            BrandShade(child: Icon(Icons.search_sharp, size: 22, color: C.brand)),
             const SizedBox(width: S.md),
             Expanded(
               child: TextField(
@@ -186,7 +232,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 onSubmitted: (_) => comingSoon(context, 'Search'),
                 style: T.body.copyWith(fontSize: 15, color: C.ink),
                 cursorColor: C.brand,
-                decoration: InputDecoration(isCollapsed: true, border: InputBorder.none, hintText: 'Search services, packs, help...', hintStyle: T.body.copyWith(fontSize: 15, color: C.muted)),
+                decoration: InputDecoration(
+                    isCollapsed: true,
+                    border: InputBorder.none,
+                    hintText: 'Search services, packs, help...',
+                    hintStyle: T.body.copyWith(fontSize: 15, color: C.muted)),
               ),
             ),
             Tooltip(
@@ -194,14 +244,19 @@ class _HomeScreenState extends State<HomeScreen> {
               child: InkResponse(
                 onTap: () => comingSoon(context, 'Voice search'),
                 radius: 24,
-                child: const SizedBox(width: 52, height: 52, child: Icon(Icons.mic_none_sharp, size: 24, color: C.ink)),
+                child: SizedBox(
+                    width: 52,
+                    height: 52,
+                    child: Icon(Icons.mic_none_sharp, size: 24, color: C.ink)),
               ),
             ),
           ]),
         ),
       );
 
-  Widget _plainIcon(IconData icon, String label, VoidCallback onTap, {bool badge = false, Color color = C.ink}) => Tooltip(
+  Widget _plainIcon(IconData icon, String label, VoidCallback onTap,
+          {bool badge = false, Color? color}) =>
+      Tooltip(
         message: label,
         child: InkResponse(
           onTap: onTap,
@@ -210,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 44,
             height: 44,
             child: Stack(alignment: Alignment.center, children: [
-              Icon(icon, size: 22, color: color),
+              BrandShade(on: color == C.brand, child: Icon(icon, size: 22, color: color ?? C.ink)),
               if (badge)
                 Positioned(
                   top: 11,
@@ -218,7 +273,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Container(
                     width: 8,
                     height: 8,
-                    decoration: BoxDecoration(color: C.brand, shape: BoxShape.circle, border: Border.all(color: C.bg, width: 1.5)),
+                    decoration: BoxDecoration(
+                        gradient: G.brand,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: C.bg, width: 1.5)),
                   ),
                 ),
             ]),
@@ -229,7 +287,17 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _connections(AppStore s) {
     if (s.connections.isEmpty) return const SizedBox.shrink();
     final multi = s.connections.length > 1;
-    final cardWidth = MediaQuery.sizeOf(context).width * 0.9 - S.page - 6;
+    final cardWidth = MediaQuery.sizeOf(context).width * 0.86 - 12;
+    // How far a centred card's edge sits inside the page margin.
+    final edgeGap = MediaQuery.sizeOf(context).width * 0.07 + 6 - S.page;
+    // If the TV was changed on another screen, bring its card into view.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_pages.hasClients || !_pages.position.haveDimensions)
+        return;
+      if (_pages.position.isScrollingNotifier.value) return;
+      if ((_pages.page ?? 0).round() != s.selectedIndex)
+        _pages.jumpToPage(s.selectedIndex);
+    });
     // The carousel is as tall as its tallest card: every card is laid out
     // invisibly at the real width to size the Stack, and the PageView sits
     // on top. Works at any text size without clipping.
@@ -246,7 +314,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     // A few px of slack for rounding between page widths.
                     padding: const EdgeInsets.fromLTRB(S.page, 4, 0, 18),
                     child: Stack(children: [
-                      for (final c in s.connections) SizedBox(width: cardWidth, child: ConnectionCard(c: c, onRecharge: () {})),
+                      for (final c in s.connections)
+                        SizedBox(
+                            width: cardWidth,
+                            child: ConnectionCard(c: c, onRecharge: () {})),
                     ]),
                   ),
                 ),
@@ -255,14 +326,50 @@ class _HomeScreenState extends State<HomeScreen> {
             Positioned.fill(
               child: PageView.builder(
                 controller: _pages,
-                padEnds: !multi,
+                padEnds: true,
                 itemCount: s.connections.length,
                 onPageChanged: s.select,
                 itemBuilder: (_, i) => Padding(
-                  padding: EdgeInsets.fromLTRB(i == 0 ? S.page : 6, 4, 6, 14),
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: ConnectionCard(c: s.connections[i], onRecharge: () => comingSoon(context, 'Recharge')),
+                  padding: const EdgeInsets.fromLTRB(6, 4, 6, 14),
+                  // The card in view sits centred at full size; a slice of the
+                  // cards on either side shows, smaller and dimmer, and zooms
+                  // in as you swipe it to the middle.
+                  child: AnimatedBuilder(
+                    animation: _pages,
+                    builder: (_, child) {
+                      final p =
+                          _pages.hasClients && _pages.position.haveDimensions
+                              ? (_pages.page ?? 0)
+                              : s.selectedIndex.toDouble();
+                      final d = (p - i).abs().clamp(0.0, 1.0);
+                      // On the first card, slide everything left so it lines
+                      // up with the page margin (nothing sits to its left);
+                      // on the last, slide right. Middle cards stay centred.
+                      final n = s.connections.length;
+                      final shift = n < 2
+                          ? 0.0
+                          : -edgeGap * (1 - p.clamp(0.0, 1.0)) +
+                              edgeGap * (p - (n - 2)).clamp(0.0, 1.0);
+                      return Transform.translate(
+                        offset: Offset(shift, 0),
+                        child: Opacity(
+                          opacity: 1 - 0.6 * d,
+                          child: Transform.scale(
+                              scale: 1 - 0.08 * d,
+                              alignment: Alignment.center,
+                              child: child),
+                        ),
+                      );
+                    },
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: ConnectionCard(
+                          c: s.connections[i],
+                          onRecharge: () {
+                            s.select(i);
+                            _open(const RechargeScreen());
+                          }),
+                    ),
                   ),
                 ),
               ),
@@ -272,17 +379,24 @@ class _HomeScreenState extends State<HomeScreen> {
         AnimatedBuilder(
           animation: _pages,
           builder: (_, __) {
-            final p = _pages.hasClients && _pages.position.haveDimensions ? (_pages.page ?? 0) : 0.0;
+            final p = _pages.hasClients && _pages.position.haveDimensions
+                ? (_pages.page ?? 0)
+                : 0.0;
             return Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               for (var i = 0; i < s.connections.length; i++)
                 Builder(builder: (_) {
                   final t = (1 - (p - i).abs()).clamp(0.0, 1.0);
                   final (accent, _) = accentOf(s.connections[i].status);
+                  // The active TV's dot takes the card gradient once it's the one in view.
+                  final orange = s.connections[i].status == ConnectionStatus.active && t > 0.5;
                   return Container(
                     width: 6 + 14 * t,
                     height: 6,
                     margin: const EdgeInsets.symmetric(horizontal: 3),
-                    decoration: BoxDecoration(color: Color.lerp(C.lineStrong, accent, t), borderRadius: BorderRadius.circular(3)),
+                    decoration: BoxDecoration(
+                        color: orange ? null : Color.lerp(C.lineStrong, accent, t),
+                        gradient: orange ? G.brand : null,
+                        borderRadius: BorderRadius.circular(3)),
                   );
                 }),
             ]);
@@ -291,124 +405,383 @@ class _HomeScreenState extends State<HomeScreen> {
     ]);
   }
 
-  Widget _quickActions() {
-    final actions = <(IconData, String, VoidCallback)>[
-      (Icons.layers_sharp, 'Change Pack', () => _open(const ChangePackScreen())),
-      (Icons.add_to_queue_sharp, 'Add/Remove Channel', () => _open(const AddRemoveScreen())),
-      (Icons.live_tv_sharp, 'My Pack', _myPack),
-      (Icons.apps_sharp, 'All Services', () => _open(const AllServicesScreen())),
-    ];
+  /// The channels on the TV whose card is showing, right under the cards:
+  /// a one-line heading and same-size logos gliding by, faded at the edges.
+  /// Tap it for the guide.
+  Widget _channelStrip(AppStore s, PlanStore plan) {
+    final c = s.connection;
+    if (c == null) return const SizedBox.shrink();
+    final base = plan.connection?.vc == c.vc ? plan.basePack : null;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(S.page, S.xl, S.page, 0),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        for (final (i, a) in actions.indexed) ...[
-          if (i > 0) const SizedBox(width: S.md),
-          Expanded(
-            child: Pressable(
-              label: a.$2,
-              onTap: a.$3,
-              child: Column(children: [
-                // Just the white icon: no fill, no border.
-                SizedBox(height: 48, child: Center(child: Icon(a.$1, color: C.ink, size: 36))),
-                const SizedBox(height: S.sm),
-                Text(a.$2, textAlign: TextAlign.center, style: T.label.copyWith(fontSize: 12.5)),
-              ]),
-            ),
+      padding: const EdgeInsets.only(top: S.xl),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: base == null
+            ? const SizedBox(key: ValueKey('loading'), height: 92)
+            : FutureBuilder<List<Channel>>(
+                key: ValueKey(c.vc),
+                future: plan.currentChannels(),
+                builder: (context, snap) {
+                  final logos = showcase(snap.data ?? const [], 14);
+                  return Pressable(
+                    label:
+                        'Channels on ${c.label}: ${base.channels}. Open channel guide',
+                    onTap: () => comingSoon(context, 'Channel guide'),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: S.page),
+                            child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.baseline,
+                                textBaseline: TextBaseline.alphabetic,
+                                children: [
+                                  Text('On ${c.label}',
+                                      style: T.section.copyWith(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700)),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                      child: Text('${base.channels} channels',
+                                          style: T.caption.copyWith(
+                                              fontSize: 12, color: C.faint))),
+                                  // Text and arrow as one inline run, so they
+                                  // share the heading's baseline.
+                                  Text.rich(TextSpan(children: [
+                                    TextSpan(
+                                        text: 'Guide',
+                                        style: T.label.copyWith(
+                                            fontSize: 12.5, color: C.inkSoft)),
+                                    WidgetSpan(
+                                        alignment: PlaceholderAlignment.middle,
+                                        child: BrandShade(child: Icon(Icons.chevron_right_sharp,
+                                            color: C.brand, size: 18))),
+                                  ])),
+                                ]),
+                          ),
+                          const SizedBox(height: S.lg),
+                          logos.isEmpty
+                              ? const SizedBox(height: 52)
+                              : EdgeFade(
+                                  width: 0.06,
+                                  child: LogoMarquee(
+                                      logos: logos,
+                                      size: 52,
+                                      gap: 14,
+                                      speed: 22)),
+                        ]),
+                  );
+                },
+              ),
+      ),
+    );
+  }
+
+  /// Greeting, name, and one quiet line on what needs attention: the first
+  /// live TV running out within five days (with "Recharge to keep watching"
+  /// as the tappable part), or that everything is fine.
+  Widget _greetingBlock(AppStore s) {
+    final now = DateTime.now();
+    final urgent = s.connections
+        .where(
+            (c) => c.status == ConnectionStatus.active && c.daysLeft(now) <= 5)
+        .toList()
+      ..sort((a, b) => a.daysLeft(now).compareTo(b.daysLeft(now)));
+    final n = s.connections.length;
+    final quiet = T.caption.copyWith(fontSize: 12.5, color: C.muted);
+    Widget line;
+    if (urgent.isNotEmpty) {
+      final d = urgent.first.daysLeft(now);
+      line = Text.rich(TextSpan(style: quiet, children: [
+        TextSpan(
+            text:
+                '${urgent.first.label} stops ${d <= 0 ? 'today' : 'in $d ${d == 1 ? 'day' : 'days'}'}.  '),
+        TextSpan(
+          text: 'Recharge to keep watching',
+          // Painted with the brand gradient, not a flat orange.
+          style: quiet.copyWith(
+            color: null,
+            foreground: Paint()..shader = G.brandInk.createShader(const Rect.fromLTWH(0, 0, 190, 16)),
+            fontWeight: FontWeight.w600,
           ),
-        ],
+          recognizer: TapGestureRecognizer()
+            ..onTap = () {
+              s.selectVc(urgent.first.vc);
+              _open(const RechargeScreen());
+            },
+        ),
+      ]));
+    } else {
+      line = Text(n == 1 ? 'Your TV is active.' : 'All $n TVs are up to date.',
+          style: quiet);
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(S.page, S.xl, S.page, S.xl),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(_greeting, style: T.body.copyWith(fontSize: 13, color: C.muted)),
+        const SizedBox(height: 2),
+        Text(s.subscriber?.name ?? '',
+            style: T.title.copyWith(
+                fontSize: 24, height: 1.15, fontWeight: FontWeight.w700)),
+        if (n > 0) ...[const SizedBox(height: 6), line],
       ]),
     );
   }
 
-  // Logos of the channels on the TV whose plan is loaded.
-  Widget _onYourTv(PlanStore plan) {
-    final base = plan.basePack;
-    if (plan.connection == null || base == null) return const SizedBox.shrink();
-    return FutureBuilder<List<Channel>>(
-      future: plan.currentChannels(),
-      builder: (context, snap) {
-        final logos = showcase(snap.data ?? const [], 14);
-        if (logos.isEmpty) return const SizedBox(height: 130);
-        return Padding(
-          padding: const EdgeInsets.only(top: S.xxl),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: S.page),
-              child: Row(children: [
-                Expanded(child: Text('On your TV', style: T.section.copyWith(fontSize: 17))),
-                Text('${base.channels} channels', style: T.caption),
-              ]),
+  /// The services, grouped as in All services: Packs & OTT, Recharge &
+  /// Offers, Account & Support. White line icons on dark tiles.
+  Widget _services() {
+    void soon(String w) => comingSoon(context, w);
+    final groups = <_Tab, List<(IconData, String, VoidCallback)>>{
+      _Tab.packs: [
+        (Icons.live_tv_outlined, 'My Pack', _myPack),
+        (
+          Icons.satellite_alt_outlined,
+          'Add/Remove Channel',
+          () => _open(const AddRemoveScreen())
+        ),
+        (
+          Icons.layers_outlined,
+          'Change Pack',
+          () => _open(const ChangePackScreen())
+        ),
+        (Icons.smart_display_outlined, 'Add OTT', () => _open(const AddOttScreen())),
+        (
+          Icons.hd_outlined,
+          'Upgrade to HD',
+          () => _open(const HdCheckScreen())
+        ),
+        (Icons.list_alt_outlined, 'Channel Guide', () => soon('Channel Guide')),
+        (
+          Icons.manage_search_outlined,
+          'Channel No. Finder',
+          () => soon('Channel No. Finder')
+        ),
+      ],
+      // The first three of each list show on Home: the ones used most.
+      _Tab.recharge: [
+        (Icons.currency_rupee_outlined, 'Recharge', () => _open(const RechargeScreen())),
+        (
+          Icons.receipt_long_outlined,
+          'Account Statement',
+          () => _open(const AccountStatementScreen())
+        ),
+        (Icons.local_offer_outlined, 'Offers', () => soon('Offers')),
+        (Icons.event_repeat_outlined, 'Autopay', () => _open(const AutoPayScreen())),
+        (
+          Icons.more_time_outlined,
+          'Pay Later',
+          () => _open(const PayLaterScreen())
+        ),
+        (Icons.emoji_events_outlined, 'Loyalty', () => soon('Loyalty')),
+        (
+          Icons.luggage_outlined,
+          'Pause Connection',
+          () => _open(const VacationModeScreen())
+        ),
+        (
+          Icons.people_alt_outlined,
+          'Recharge for Friends & Family',
+          () => _open(const FriendsFamilyScreen())
+        ),
+      ],
+      _Tab.account: [
+        (
+          Icons.person_outline_sharp,
+          'My Account',
+          () => _open(const ProfileScreen())
+        ),
+        (
+          Icons.request_quote_outlined,
+          'Bills & Queries',
+          () => _open(const BillsQueriesScreen())
+        ),
+        (
+          Icons.engineering_outlined,
+          'Request Technician',
+          () => _open(const ContactSupportScreen())
+        ),
+        (
+          Icons.phonelink_ring_outlined,
+          'Update Mobile No.',
+          () => _open(const UpdateMobileScreen())
+        ),
+        (
+          Icons.troubleshoot_outlined,
+          'Troubleshoot',
+          () => soon('Troubleshoot')
+        ),
+        (
+          Icons.inventory_2_outlined,
+          'Orders & Requests',
+          () => soon('Orders & Requests')
+        ),
+        (
+          Icons.wifi_tethering_error_outlined,
+          'Signal Issue',
+          () => _open(const RestoreSignalScreen())
+        ),
+        (
+          Icons.all_inclusive_outlined,
+          'Activate Always On',
+          () => soon('Activate Always On')
+        ),
+        (
+          Icons.tv_off_outlined,
+          'Resolve on TV Error',
+          () => _open(const TvErrorScreen())
+        ),
+      ],
+    };
+    // Home shows the first three of each group; the rest are one tap away.
+    final items = groups[_tab]!.take(3).toList();
+    const names = {
+      _Tab.packs: 'Packs & OTT',
+      _Tab.recharge: 'Recharge & Offers',
+      _Tab.account: 'Account & Support'
+    };
+    final more = groups[_tab]!.length - 3;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(S.page, S.xxl + 4, S.page, 0),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _HomeTabs<_Tab>(
+          options: const [
+            (_Tab.packs, 'Packs & OTT'),
+            (_Tab.recharge, 'Recharge & Offers'),
+            (_Tab.account, 'Account & Support')
+          ],
+          value: _tab,
+          onChanged: (t) => setState(() => _tab = t),
+        ),
+        const SizedBox(height: S.md),
+        // One panel: three actions side by side, then "More in …" under them.
+        Container(
+          color: C.surface,
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              layoutBuilder: (current, previous) => Stack(
+                  alignment: Alignment.topCenter,
+                  children: [...previous, if (current != null) current]),
+              transitionBuilder: (child, a) => FadeTransition(
+                opacity: a,
+                child: SlideTransition(
+                    position:
+                        Tween(begin: const Offset(0.04, 0), end: Offset.zero)
+                            .animate(a),
+                    child: child),
+              ),
+              child: IntrinsicHeight(
+                key: ValueKey(_tab),
+                child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final (i, it) in items.indexed) ...[
+                        if (i > 0)
+                          Padding(
+                              padding: EdgeInsets.symmetric(vertical: S.lg),
+                              child: VerticalDivider(
+                                  width: 1, thickness: 1, color: C.line)),
+                        Expanded(
+                            child: Reveal(
+                                order: i,
+                                child: _ServiceTile(
+                                    icon: it.$1, label: it.$2, onTap: it.$3))),
+                      ],
+                    ]),
+              ),
             ),
-            const SizedBox(height: S.md),
-            SizedBox(
-              height: 72,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(S.page, 4, S.page, 8),
-                itemCount: logos.length,
-                separatorBuilder: (_, __) => const SizedBox(width: S.md),
-                itemBuilder: (_, i) => Pressable(
-                  label: logos[i].$1,
-                  onTap: () => comingSoon(context, 'Channel guide'),
-                  child: DecoratedBox(
-                    decoration: const BoxDecoration(shape: BoxShape.circle, boxShadow: D.lift),
-                    child: ChannelLogo(name: logos[i].$1, url: logos[i].$2, size: 58),
+            Divider(
+                height: 1,
+                thickness: 1,
+                color: C.line,
+                indent: S.lg,
+                endIndent: S.lg),
+            // More in this group: the whole row opens All services on the same tab.
+            Semantics(
+              button: true,
+              label: 'More ${names[_tab]} services, $more more',
+              child: InkWell(
+                onTap: () => _open(AllServicesScreen(initialTab: _tab.index)),
+                child: ExcludeSemantics(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(S.lg, 14, S.md, 14),
+                    child: Row(children: [
+                      Expanded(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          layoutBuilder: (current, previous) => Stack(
+                              alignment: Alignment.centerLeft,
+                              children: [
+                                ...previous,
+                                if (current != null) current
+                              ]),
+                          child: Text('More in ${names[_tab]}',
+                              key: ValueKey(_tab),
+                              style: T.label
+                                  .copyWith(fontSize: 13, color: C.inkSoft)),
+                        ),
+                      ),
+                      Text('$more more',
+                          style:
+                              T.caption.copyWith(fontSize: 12, color: C.faint)),
+                      const SizedBox(width: 2),
+                      BrandShade(child: Icon(Icons.chevron_right_sharp,
+                          color: C.brand, size: 20)),
+                    ]),
                   ),
                 ),
               ),
             ),
           ]),
-        );
-      },
+        ),
+      ]),
     );
   }
 
-  Widget _offer() {
-    final narrow = MediaQuery.sizeOf(context).width < 360 || MediaQuery.textScalerOf(context).scale(10) > 13;
-    final info = Row(children: [
-      // The offer's app, with its real logo.
-      const AppLogo(name: 'Sony LIV', url: 'https://www.dishtv.in/content/dam/dishtv-aem-web-platform/mogiio/images/dishsmartottapps/sonyliv.webp', size: 52),
-      const SizedBox(width: S.md),
-      Expanded(
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Stream shows & live sports', style: T.caption),
-          Text('Sony LIV Premium', style: T.item),
-          Text('₹49/month', style: T.label.copyWith(color: C.brandDeep)),
-        ]),
-      ),
-    ]);
-    final button = Material(
-      color: C.ink,
-      borderRadius: BorderRadius.zero,
-      child: InkWell(
-        borderRadius: BorderRadius.zero,
-        onTap: () => comingSoon(context, 'OTT offers'),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Text('Activate', textAlign: TextAlign.center, style: T.label.copyWith(color: C.onInk)),
-        ),
-      ),
-    );
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(S.page, S.xxl, S.page, 0),
-      child: Glow(
-        color: const Color(0xFF3B2F86),
-        strength: 1,
-        child: Stack(children: [
-          Padding(
-            padding: const EdgeInsets.all(S.lg),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text('OFFER FOR YOU', style: T.overline.copyWith(color: const Color(0xFFB9A8FF))),
-              const SizedBox(height: S.sm),
-              narrow
-                  ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [info, const SizedBox(height: S.md), button])
-                  : Row(children: [Expanded(child: info), const SizedBox(width: S.sm), button]),
-            ]),
+  /// A few offers that take turns in one card below the services.
+  Widget _offer() => Padding(
+        padding: const EdgeInsets.fromLTRB(S.page, S.xxl + 4, S.page, 0),
+        child: _OfferCarousel(offers: [
+          _Offer(
+            logo: const AppLogo(
+                name: 'Sony LIV',
+                url:
+                    'https://www.dishtv.in/content/dam/dishtv-aem-web-platform/mogiio/images/dishsmartottapps/sonyliv.webp',
+                size: 42),
+            title: 'Sony LIV Premium',
+            line: 'Shows & sports · ₹49/mo',
+            action: 'Activate',
+            onTap: () => _open(const AddOttScreen()),
+          ),
+          _Offer(
+            logo: const ChannelLogo(
+                name: 'Sony Ten 1',
+                url:
+                    'https://www.dishtv.in/content/dam/dishtv-aem-web-platform/mogiio/images/channels/sony-ten-1.webp',
+                size: 42,
+                ring: Colors.white),
+            title: 'Asia Cup Final, live',
+            line: 'Sony Ten 1 HD · ₹22/mo',
+            action: 'Add',
+            onTap: () => _open(const AddRemoveScreen()),
+          ),
+          _Offer(
+            logo: SizedBox(
+                width: 42,
+                height: 42,
+                child: Icon(Icons.hd_outlined, color: C.ink, size: 32)),
+            title: 'Go HD on your TV',
+            line: '14 channels in sharp HD',
+            action: 'Upgrade',
+            onTap: () => _open(const HdCheckScreen()),
           ),
         ]),
-      ),
-    );
-  }
+      );
 
   Widget _bottomNav() {
     const items = [
@@ -419,11 +792,12 @@ class _HomeScreenState extends State<HomeScreen> {
       (Icons.support_agent_sharp, 'Get help'),
     ];
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: C.surface,
-        border: Border(top: BorderSide(color: C.cardEdge)),
+        border: Border(top: BorderSide(color: C.line)),
       ),
-      padding: EdgeInsets.only(top: 8, bottom: 8 + MediaQuery.paddingOf(context).bottom),
+      padding: EdgeInsets.only(
+          top: 10, bottom: 10 + MediaQuery.paddingOf(context).bottom),
       child: Row(children: [
         for (final (i, it) in items.indexed)
           Expanded(
@@ -435,27 +809,35 @@ class _HomeScreenState extends State<HomeScreen> {
               child: InkWell(
                 onTap: () {
                   if (i == 0) return setState(() => _nav = 0);
+                  if (it.$2 == 'Recharge') return _open(const RechargeScreen());
+                  if (it.$2 == 'Get help') return _open(const ContactSupportScreen());
+                  if (it.$2 == 'OTT') return _open(const AddOttScreen());
                   comingSoon(context, it.$2);
                 },
                 child: ExcludeSemantics(
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                      
-                      child: Icon(it.$1, size: 22, color: C.ink),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 2),
+                      child: BrandShade(on: i == _nav, child: Icon(it.$1,
+                          size: 22, color: i == _nav ? C.brand : C.muted)),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     // One line, never broken mid-word: shrinks to fit instead.
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 2),
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
-                        child: Text(it.$2,
+                        child: BrandShade(on: i == _nav, child: Text(it.$2,
                             maxLines: 1,
                             softWrap: false,
-                            style: T.caption
-                                .copyWith(fontSize: 11, fontWeight: i == _nav ? FontWeight.w800 : FontWeight.w600, color: i == _nav ? C.ink : C.muted)),
+                            style: T.caption.copyWith(
+                                fontSize: 11,
+                                fontWeight: i == _nav
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: i == _nav ? C.brand : C.muted))),
                       ),
                     ),
                   ]),
@@ -465,5 +847,264 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
       ]),
     );
+  }
+}
+
+enum _Tab { packs, recharge, account }
+
+/// One action inside the services panel: a white line icon over its name,
+/// with no box of its own. It tips back a little when pressed.
+class _ServiceTile extends StatelessWidget {
+  const _ServiceTile(
+      {required this.icon, required this.label, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Pressable(
+        label: label,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 20, 8, 18),
+          child: Column(mainAxisAlignment: MainAxisAlignment.start, children: [
+            SizedBox(
+                height: 30,
+                child: Center(child: Icon(icon, size: 26, color: C.ink))),
+            const SizedBox(height: 10),
+            Text(label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: T.label.copyWith(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    height: 1.25,
+                    color: C.inkSoft)),
+          ]),
+        ),
+      );
+}
+
+/// Three equal tabs on a quiet surface (no border). The chosen one sits on
+/// a sliding orange block; labels stay on one line.
+class _HomeTabs<V> extends StatelessWidget {
+  const _HomeTabs(
+      {super.key,
+      required this.options,
+      required this.value,
+      required this.onChanged});
+
+  final List<(V, String)> options;
+  final V value;
+  final ValueChanged<V> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final i = options.indexWhere((o) => o.$1 == value);
+    final n = options.length;
+    return Container(
+      height: 44,
+      color: C.surface,
+      padding: const EdgeInsets.all(4),
+      child: Stack(children: [
+        AnimatedAlign(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment(n == 1 ? 0 : -1 + 2 * i / (n - 1), 0),
+          child: FractionallySizedBox(
+              widthFactor: 1 / n,
+              heightFactor: 1,
+              child: const DecoratedBox(
+                  decoration: BoxDecoration(gradient: G.brand))),
+        ),
+        Row(children: [
+          for (final (j, o) in options.indexed)
+            Expanded(
+              child: Semantics(
+                button: true,
+                selected: j == i,
+                label: o.$2,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    if (j == i) return;
+                    HapticFeedback.selectionClick();
+                    onChanged(o.$1);
+                  },
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 200),
+                          style: T.label.copyWith(
+                              fontSize: 13,
+                              fontWeight:
+                                  j == i ? FontWeight.w600 : FontWeight.w500,
+                              color: j == i ? Colors.white : C.muted),
+                          child: Text(o.$2, maxLines: 1),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ]),
+      ]),
+    );
+  }
+}
+
+class _Offer {
+  const _Offer(
+      {required this.logo,
+      required this.title,
+      required this.line,
+      required this.action,
+      required this.onTap});
+  final Widget logo;
+  final String title;
+  final String line;
+  final String action;
+  final VoidCallback onTap;
+}
+
+/// Offers that take turns in one quiet dark card: every few seconds the next
+/// one fades in. A small heading sits above it, with bars (only when there is
+/// more than one offer) to show which is up; tap a bar to jump to it. Orange
+/// is kept for the action button.
+class _OfferCarousel extends StatefulWidget {
+  const _OfferCarousel({required this.offers});
+  final List<_Offer> offers;
+
+  @override
+  State<_OfferCarousel> createState() => _OfferCarouselState();
+}
+
+class _OfferCarouselState extends State<_OfferCarousel> {
+  int _page = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _start();
+  }
+
+  void _start() {
+    _timer?.cancel();
+    if (widget.offers.length < 2) return;
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted || MediaQuery.of(context).disableAnimations) return;
+      setState(() => _page = (_page + 1) % widget.offers.length);
+    });
+  }
+
+  void _go(int i) {
+    setState(() => _page = i);
+    _start();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final o = widget.offers[_page];
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [
+        Expanded(
+            child: Text('Offers for you',
+                style: T.section
+                    .copyWith(fontSize: 15, fontWeight: FontWeight.w700))),
+        if (widget.offers.length > 1)
+          for (var i = 0; i < widget.offers.length; i++)
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _go(i),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  width: i == _page ? 14 : 5,
+                  height: 4,
+                  decoration: BoxDecoration(gradient: i == _page ? G.brand : null, color: i == _page ? null : C.lineStrong),
+                ),
+              ),
+            ),
+      ]),
+      const SizedBox(height: S.md),
+      Container(
+        color: C.surface,
+        padding: const EdgeInsets.fromLTRB(S.md, S.md, S.md, S.md),
+        // Tall enough for both lines at the reader's text size.
+        child: SizedBox(
+          height: MediaQuery.textScalerOf(context).scale(44).clamp(44.0, 140.0),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 420),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, a) => FadeTransition(
+              opacity: a,
+              child: SlideTransition(
+                  position:
+                      Tween(begin: const Offset(0, 0.25), end: Offset.zero)
+                          .animate(a),
+                  child: child),
+            ),
+            child: Row(key: ValueKey(_page), children: [
+              o.logo,
+              const SizedBox(width: S.md),
+              Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(o.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: T.item.copyWith(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w600,
+                              color: C.ink)),
+                      const SizedBox(height: 2),
+                      Text(o.line,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              T.caption.copyWith(fontSize: 12, color: C.muted)),
+                    ]),
+              ),
+              const SizedBox(width: S.sm),
+              Material(
+                type: MaterialType.transparency,
+                child: Ink(
+                  decoration: const BoxDecoration(gradient: G.brand),
+                  child: InkWell(
+                    onTap: o.onTap,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 9),
+                      child: Text(o.action,
+                          style: T.label.copyWith(
+                              fontSize: 13,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    ]);
   }
 }

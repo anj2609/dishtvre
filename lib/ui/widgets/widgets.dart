@@ -77,7 +77,7 @@ class RoundIconButton extends StatelessWidget {
       message: label,
       child: Container(
         decoration: filled
-            ? const BoxDecoration(
+            ? BoxDecoration(
                 shape: BoxShape.circle,
                 color: C.cardTop,
                 border: Border.fromBorderSide(BorderSide(color: C.cardEdge)),
@@ -102,7 +102,7 @@ class RoundIconButton extends StatelessWidget {
                     child: Container(
                       width: 8,
                       height: 8,
-                      decoration: BoxDecoration(color: C.brand, shape: BoxShape.circle, border: Border.all(color: C.surface, width: 1.5)),
+                      decoration: BoxDecoration(gradient: G.brand, shape: BoxShape.circle, border: Border.all(color: C.surface, width: 1.5)),
                     ),
                   ),
               ]),
@@ -195,23 +195,26 @@ class SecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      // Outline only, no fill.
-      decoration: BoxDecoration(border: Border.all(color: C.lineStrong)),
-      position: DecorationPosition.background,
+    final on = onTap != null;
+    // An orange outline with orange (gradient) text and icon: no grey fill.
+    return Container(
+      decoration: BoxDecoration(border: Border.all(color: on ? C.brand : C.lineStrong, width: 1.3)),
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
           borderRadius: BorderRadius.zero,
           onTap: onTap,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 54),
+            constraints: const BoxConstraints(minHeight: 52),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: S.lg),
-              child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
-                if (icon != null) ...[Icon(icon, size: 19, color: C.ink), const SizedBox(width: 8)],
-                Flexible(child: Text(label, textAlign: TextAlign.center, style: T.item.copyWith(fontSize: 15))),
-              ]),
+              child: BrandShade(
+                on: on,
+                child: Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.center, children: [
+                  if (icon != null) ...[Icon(icon, size: 19, color: on ? C.brand : C.faint), const SizedBox(width: 8)],
+                  Flexible(child: Text(label, textAlign: TextAlign.center, style: T.item.copyWith(fontSize: 15, color: on ? C.brand : C.faint))),
+                ]),
+              ),
             ),
           ),
         ),
@@ -228,19 +231,25 @@ class Panel extends StatelessWidget {
       required this.child,
       this.padding = const EdgeInsets.all(S.lg),
       this.onTap,
-      this.color = C.surface,
-      this.borderColor = C.line,
+      this.color,
+      this.borderColor,
       this.radius = R.lg});
 
   final Widget child;
   final EdgeInsetsGeometry padding;
   final VoidCallback? onTap;
-  final Color color;
-  final Color borderColor;
+
+  /// Defaults to the quiet surface.
+  final Color? color;
+
+  /// Defaults to the hairline.
+  final Color? borderColor;
   final double radius;
 
   @override
   Widget build(BuildContext context) {
+    final color = this.color ?? C.surface;
+    final borderColor = this.borderColor ?? C.line;
     final raised = color == C.surface;
     final inner = Material(
       type: MaterialType.transparency,
@@ -249,7 +258,9 @@ class Panel extends StatelessWidget {
     return Container(
       decoration: raised
           ? D.card(radius: radius, edge: borderColor == C.line ? null : borderColor)
-          : BoxDecoration(color: color, borderRadius: BorderRadius.zero, border: Border.all(color: borderColor)),
+          // Transparent panels become the quiet surface; tinted ones keep their
+          // colour. Either way, no outline.
+          : BoxDecoration(color: color == Colors.transparent ? C.surface : color, borderRadius: BorderRadius.zero),
       foregroundDecoration: raised ? D.sheen(radius) : null,
       clipBehavior: Clip.antiAlias,
       child: inner,
@@ -287,15 +298,16 @@ class SectionTitle extends StatelessWidget {
 
 /// Small coloured label.
 class Tag extends StatelessWidget {
-  const Tag(this.text, {super.key, this.fg = C.inkSoft, this.bg = C.sunken, this.icon});
+  const Tag(this.text, {super.key, this.fg, this.bg, this.icon});
 
   final String text;
-  final Color fg;
-  final Color bg;
+  final Color? fg;
+  final Color? bg;
   final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
+    final fg = this.fg ?? C.inkSoft;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -330,11 +342,10 @@ class Pick extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOut,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          // Outline when off; solid orange with a small radius when on.
+          // A quiet surface when off; the card orange when on. No outline.
           decoration: BoxDecoration(
-            color: selected ? C.brand : null,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: selected ? C.brand : C.lineStrong),
+            color: selected ? null : C.surface,
+            gradient: selected ? G.brand : null,
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             AnimatedSwitcher(
@@ -345,7 +356,7 @@ class Pick extends StatelessWidget {
                   : (icon != null ? Icon(icon, key: const ValueKey('icon'), size: 15, color: C.muted) : const SizedBox(key: ValueKey('none'))),
             ),
             if (selected || icon != null) const SizedBox(width: 6),
-            Flexible(child: Text(label, style: T.label.copyWith(fontSize: 13, color: selected ? Colors.white : C.ink))),
+            Flexible(child: Text(label, style: T.label.copyWith(fontSize: 13, fontWeight: FontWeight.w500, color: selected ? Colors.white : C.inkSoft))),
           ]),
         ),
       ),
@@ -408,13 +419,14 @@ class _SegmentedState<V> extends State<Segmented<V>> with SingleTickerProviderSt
     final scaler = MediaQuery.textScalerOf(context);
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(border: Border.all(color: C.lineStrong)),
+      // A quiet strip, no outline; the chosen option sits on the card orange.
+      color: C.surface,
       child: LayoutBuilder(builder: (context, box) {
         final w = box.maxWidth / n;
         // Labels wrap only between words (the font shrinks a little if one
         // word is too wide), and the bar grows to fit the tallest label.
         final avail = math.max(1.0, w - 8);
-        final base = T.label.copyWith(fontSize: 13);
+        final base = T.label.copyWith(fontSize: 13, fontWeight: FontWeight.w500);
         var widest = 0.0;
         for (final o in widget.options) {
           for (final word in o.$2.split(' ')) {
@@ -443,8 +455,8 @@ class _SegmentedState<V> extends State<Segmented<V>> with SingleTickerProviderSt
                 top: 0,
                 bottom: 0,
                 child: DecoratedBox(
-                  // Selected option: solid orange, square corners.
-                  decoration: const BoxDecoration(color: C.brand),
+                  // Selected option: the card orange, square corners.
+                  decoration: const BoxDecoration(gradient: G.brand),
                 ),
               ),
               Row(children: [
@@ -491,9 +503,9 @@ class BottomBar extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(S.page, S.md, S.page, S.md + MediaQuery.paddingOf(context).bottom),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: C.bg,
-        border: Border(top: BorderSide(color: C.cardEdge)),
+        border: Border(top: BorderSide(color: C.line)),
       ),
       child: SizedBox(width: double.infinity, child: child),
     );
@@ -513,9 +525,9 @@ class SearchBox extends StatelessWidget {
     return Container(
       height: 48,
       padding: const EdgeInsets.only(left: 14, right: 4),
-      decoration: BoxDecoration(border: Border.all(color: C.lineStrong)),
+      decoration: BoxDecoration(color: C.surface),
       child: Row(children: [
-        const Icon(Icons.search_sharp, size: 20, color: C.muted),
+        Icon(Icons.search_sharp, size: 20, color: C.muted),
         const SizedBox(width: 8),
         Expanded(
           child: TextField(
@@ -535,7 +547,7 @@ class SearchBox extends StatelessWidget {
                     controller.clear();
                     onChanged('');
                   },
-                  icon: const Icon(Icons.close_sharp, size: 18, color: C.muted),
+                  icon: Icon(Icons.close_sharp, size: 18, color: C.muted),
                 ),
         ),
       ]),
@@ -560,7 +572,7 @@ class EmptyNote extends StatelessWidget {
         Container(
           width: 56,
           height: 56,
-          decoration: const BoxDecoration(color: C.sunken, shape: BoxShape.circle),
+          decoration: BoxDecoration(color: C.sunken, shape: BoxShape.circle),
           child: Icon(icon, color: C.muted),
         ),
         const SizedBox(height: S.md),
@@ -599,11 +611,10 @@ Future<V?> showSheet<V>(BuildContext context, {required String title, String? su
     builder: (ctx) => ConstrainedBox(
       constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.88),
       child: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: C.bg,
           // Rounded top corners: the one rounded surface, so sheets read as sheets.
           borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-          border: Border.fromBorderSide(BorderSide(color: C.lineStrong)),
         ),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Center(
@@ -636,15 +647,17 @@ Future<V?> showSheet<V>(BuildContext context, {required String title, String? su
 /// A channel's logo in a white circle. Falls back to the channel's initials
 /// while the logo loads or if there isn't one.
 class ChannelLogo extends StatelessWidget {
-  const ChannelLogo({super.key, required this.name, this.url, this.size = 40, this.ring = _ring});
-
-  /// An orange frame around every logo.
-  static const _ring = C.brand;
+  const ChannelLogo({super.key, required this.name, this.url, this.size = 40, this.ring, this.outline = false});
 
   final String name;
   final String? url;
   final double size;
-  final Color ring;
+
+  /// Kept so callers stay simple; logos have no coloured frame.
+  final Color? ring;
+
+  /// A hairline edge, so the white circle reads on a light background.
+  final bool outline;
 
   @override
   Widget build(BuildContext context) {
@@ -665,7 +678,9 @@ class ChannelLogo extends StatelessWidget {
       child: Container(
         width: size,
         height: size,
-        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+        // On the light ground the white circle gets a hairline so it doesn't
+        // melt into the page.
+        decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: outline || lightMode.value ? Border.all(color: const Color(0x1F000000)) : null),
         child: ClipOval(
           child: url == null
               ? fallback
@@ -758,10 +773,29 @@ class Avatar extends StatelessWidget {
         height: size,
         alignment: Alignment.center,
         clipBehavior: Clip.antiAlias,
-        decoration: const BoxDecoration(color: C.brand, shape: BoxShape.circle),
+        decoration: const BoxDecoration(gradient: G.brand, shape: BoxShape.circle),
         child: photo != null
             ? Image.memory(photo!, width: size, height: size, fit: BoxFit.cover, gaplessPlayback: true, excludeFromSemantics: true)
             : Text(initials,
                 textScaler: TextScaler.noScaling, style: T.label.copyWith(fontSize: size * 0.36, fontWeight: FontWeight.w800, color: Colors.white)),
       );
+}
+
+/// Paints its child (an icon or a line of text) with the brand orange
+/// gradient instead of a flat orange. With [on] false the child keeps its
+/// own colour, for things that are orange only when selected.
+class BrandShade extends StatelessWidget {
+  const BrandShade({super.key, required this.child, this.on = true});
+
+  final Widget child;
+  final bool on;
+
+  @override
+  Widget build(BuildContext context) => !on
+      ? child
+      : ShaderMask(
+          blendMode: BlendMode.srcIn,
+          shaderCallback: (r) => G.brandInk.createShader(r),
+          child: child,
+        );
 }

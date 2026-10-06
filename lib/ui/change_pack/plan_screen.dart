@@ -39,30 +39,21 @@ class PlanScreen extends StatelessWidget {
                 for (final g in groups)
                   if (plan.itemsOf(g.$1).isNotEmpty) ...[
                     Padding(
-                      padding: const EdgeInsets.only(top: S.lg, bottom: S.sm),
+                      padding: const EdgeInsets.only(top: S.xl, bottom: S.sm + 2),
                       child: Row(children: [
-                        Icon(g.$3, size: 18, color: C.muted),
-                        const SizedBox(width: 6),
-                        Expanded(child: Text(g.$2, style: T.section.copyWith(fontSize: 15))),
-                        Text(rupees(plan.itemsOf(g.$1).fold(0.0, (a, i) => a + i.price)), style: T.label),
+                        Expanded(child: Text(g.$2, style: T.section.copyWith(fontSize: 15, fontWeight: FontWeight.w700))),
+                        Text(rupees(plan.itemsOf(g.$1).fold(0.0, (a, i) => a + i.price)), style: T.caption.copyWith(fontSize: 12.5, color: C.muted)),
                       ]),
                     ),
-                    // Outline only: no fill.
-                    Panel(
-                      padding: EdgeInsets.zero,
-                      color: Colors.transparent,
-                      borderColor: C.cardEdge,
-                      child: Column(children: [
-                        for (final (n, i) in plan.itemsOf(g.$1).indexed) ...[
-                          if (n > 0) const Divider(height: 1, color: C.line, indent: S.lg),
-                          PlanItemRow(item: i, plan: plan, readOnly: readOnly),
-                        ],
-                      ]),
-                    ),
+                    // Items straight on the page: no panel behind them and no
+                    // lines between them; spacing does the work.
+                    Column(children: [
+                      for (final i in plan.itemsOf(g.$1)) PlanItemRow(item: i, plan: plan, readOnly: readOnly, flush: true),
+                    ]),
                   ],
                 const SizedBox(height: S.lg),
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Icon(Icons.info_outline_sharp, size: 16, color: C.muted),
+                  Icon(Icons.info_outline_sharp, size: 16, color: C.muted),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text('Prices include GST. Your bill also has the Network Capacity Fee (NCF), set by how many channels you have.', style: T.caption),
@@ -98,11 +89,14 @@ class PlanScreen extends StatelessWidget {
 /// One item of the plan: logo, name, details, price, and delete / undo (or
 /// a lock when it can't be removed).
 class PlanItemRow extends StatelessWidget {
-  const PlanItemRow({super.key, required this.item, required this.plan, this.readOnly = false});
+  const PlanItemRow({super.key, required this.item, required this.plan, this.readOnly = false, this.flush = false});
 
   final PlanItem item;
   final PlanStore plan;
   final bool readOnly;
+
+  /// Sitting straight on the page (no panel), so no left inset.
+  final bool flush;
 
   @override
   Widget build(BuildContext context) {
@@ -112,10 +106,10 @@ class PlanItemRow extends StatelessWidget {
       if (i.channels > 1) '${i.channels} channels',
       if (i.isHd) 'HD',
       if (i.language.isNotEmpty) i.language,
-    ].join(' | ');
+    ].join('  ·  ');
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.fromLTRB(S.lg, S.md, S.sm, S.md),
+      padding: EdgeInsets.fromLTRB(flush ? 0 : S.lg, S.md, flush ? 0 : S.sm, S.md),
       child: Row(children: [
         if (i.logoUrl != null) ...[
           ChannelLogo(name: i.name, url: i.logoUrl, size: 38),
@@ -125,14 +119,16 @@ class PlanItemRow extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(i.name,
                 style: T.item.copyWith(
-                  fontSize: 14.5,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                   color: removed ? C.muted : C.ink,
                   decoration: removed ? TextDecoration.lineThrough : null,
                 )),
-            if (detail.isNotEmpty) Text(detail, style: T.caption),
+            if (detail.isNotEmpty) ...[const SizedBox(height: 2), Text(detail, style: T.caption.copyWith(fontSize: 12, color: C.muted))],
             if (removed) Text('Will be removed when you apply', style: T.caption.copyWith(color: C.danger, fontWeight: FontWeight.w700)),
             // Price sits under the name so the name gets the full width.
-            Text('${rupees(i.price)}/mo', style: T.label.copyWith(color: removed ? C.muted : C.ink)),
+            const SizedBox(height: 2),
+            Text('${rupees(i.price)}/mo', style: T.label.copyWith(fontSize: 12.5, color: removed ? C.muted : C.inkSoft)),
           ]),
         ),
         // Delete (or undo); items that can't be removed show a lock.
@@ -147,7 +143,7 @@ class PlanItemRow extends StatelessWidget {
         else
           Tooltip(
             message: '${i.name} can\'t be removed',
-            child: const SizedBox(width: 48, height: 48, child: Icon(Icons.lock_outline_sharp, size: 18, color: C.faint)),
+            child: SizedBox(width: 48, height: 48, child: Icon(Icons.lock_outline_sharp, size: 18, color: C.faint)),
           ),
       ]),
     );

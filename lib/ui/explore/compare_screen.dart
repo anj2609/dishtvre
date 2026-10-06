@@ -202,7 +202,7 @@ class _CompareScreenState extends State<CompareScreen> {
 
   Widget _fact(String label, List<Widget> cells, {List<bool>? best, bool last = false}) => Container(
         padding: const EdgeInsets.symmetric(vertical: S.md - 2),
-        decoration: BoxDecoration(border: last ? null : const Border(bottom: BorderSide(color: C.line))),
+        decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: C.line))),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(padding: const EdgeInsets.symmetric(horizontal: _inset), child: Text(label, style: T.caption.copyWith(fontSize: 11.5))),
           const SizedBox(height: 4),
@@ -218,7 +218,7 @@ class _CompareScreenState extends State<CompareScreen> {
                       ? Row(mainAxisSize: MainAxisSize.min, children: [
                           Flexible(child: cell),
                           const SizedBox(width: 3),
-                          const Icon(Icons.star_sharp, size: 14, color: C.brand),
+                          BrandShade(child: Icon(Icons.star_sharp, size: 14, color: C.brand)),
                         ])
                       : cell,
                 ),
@@ -287,8 +287,11 @@ class _CompareScreenState extends State<CompareScreen> {
                   width: _tickW,
                   child: Column(children: [
                     Text(i == 0 ? 'Yours' : String.fromCharCode(64 + i), style: T.overline.copyWith(fontSize: 10, color: _colInk(i))),
-                    Text('$n',
-                        style: T.item.copyWith(fontSize: 15, color: n == per.reduce((a, b) => a > b ? a : b) && per.toSet().length > 1 ? C.brandDeep : C.ink)),
+                    BrandShade(
+                      on: n == per.reduce((a, b) => a > b ? a : b) && per.toSet().length > 1,
+                      child: Text('$n',
+                          style: T.item.copyWith(fontSize: 15, color: n == per.reduce((a, b) => a > b ? a : b) && per.toSet().length > 1 ? C.brandDeep : C.ink)),
+                    ),
                   ]),
                 ),
             ]),
@@ -318,7 +321,7 @@ class _CompareScreenState extends State<CompareScreen> {
 
   Widget _channelRow(Channel c, List<Map<String, Channel>> sets) => Container(
         padding: const EdgeInsets.fromLTRB(S.md, 8, S.md, 8),
-        decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.line))),
+        decoration: BoxDecoration(border: Border(top: BorderSide(color: C.line))),
         child: Row(children: [
           ChannelLogo(name: c.name, url: c.logoUrl, size: 34),
           const SizedBox(width: S.md - 2),

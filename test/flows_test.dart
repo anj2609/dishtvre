@@ -99,7 +99,7 @@ void main() {
         await _start(t);
 
         // All services, every group.
-        await _tap(t, find.text('All Services'));
+        await _tap(t, find.textContaining('More in '));
         await _see(t, find.text('Channel No. Finder'));
         await _tap(t, find.text('My Pack'));
         expect(find.text('Your plan'), findsOneWidget);
@@ -113,7 +113,7 @@ void main() {
         // The side menu.
         await _find(t, find.byTooltip('Menu'));
         await _tap(t, find.byTooltip('Menu'));
-        await _see(t, find.text('MY ACCOUNT'));
+        await _see(t, find.text('My account'));
         await _see(t, find.text('Regulatory Information'));
         await _find(t, find.text('My Existing Pack'));
         await _tap(t, find.text('My Existing Pack'));
@@ -125,7 +125,7 @@ void main() {
         await _tap(t, find.byTooltip('Menu'));
         await _tap(t, find.text('My Profile'));
         expect(find.text('Profile'), findsOneWidget);
-        await _see(t, find.text('WARRANTY'));
+        await _see(t, find.text('Warranty'));
         await _see(t, find.textContaining('Installed'));
         await _tap(t, find.bySemanticsLabel(RegExp(r'^Living Room, VC ')));
         await _see(t, find.textContaining('Raise a warranty claim'));
@@ -174,7 +174,7 @@ void main() {
         expect(find.text('Edit Profile'), findsOneWidget);
         await _back(t);
         await _tap(t, find.text('Discard changes'));
-        await _find(t, find.text('CONTACT DETAILS'));
+        await _find(t, find.text('Contact details'));
         await _find(t, find.text('kashyap.raina@example.com'));
         await _back(t);
 
@@ -273,7 +273,7 @@ void main() {
       testWidgets('your plan, filters, AI — ${s.key}, text ×$text', (t) async {
         await _screen(t, s.value, text);
         await _start(t);
-        await _tap(t, find.text('All Services'));
+        await _tap(t, find.textContaining('More in '));
         await _see(t, find.text('Channel No. Finder'));
         await _back(t);
 

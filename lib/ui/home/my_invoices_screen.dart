@@ -16,8 +16,8 @@ const _monthsLong = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
 DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 String _day(DateTime d) => '${d.day.toString().padLeft(2, '0')} ${_months[d.month - 1]} ${d.year}';
 
-class _Invoice {
-  const _Invoice(this.number, this.date, this.amount);
+class Invoice {
+  const Invoice(this.number, this.date, this.amount);
   final String number;
   final DateTime date;
   final double amount;
@@ -25,12 +25,12 @@ class _Invoice {
 
 /// Sample invoices: one a month for the last six months, on a day and for an
 /// amount that depend on the TV. The same TV always gives the same list.
-List<_Invoice> _invoicesFor(Connection c, DateTime now) {
+List<Invoice> invoicesFor(Connection c, DateTime now) {
   final seed = c.vc.hashCode.abs();
   final day = 1 + seed % 27;
   return [
     for (var i = 0; i < 6; i++)
-      _Invoice(
+      Invoice(
         'JPM-${34567890 + seed % 9000 + i * 137}',
         DateTime(now.year, now.month - i, day),
         c.monthlyRecharge + (seed >> (i + 1)) % 40,
@@ -59,7 +59,7 @@ class _MyInvoicesScreenState extends State<MyInvoicesScreen> {
     final d = await showSheet<DateTime>(
       context,
       title: 'Select From date',
-      builder: (_) => _Calendar(selected: _from, first: DateTime(_today.year - 2), last: _to, rangeStart: _from, rangeEnd: _to),
+      builder: (_) => CalendarPicker(selected: _from, first: DateTime(_today.year - 2), last: _to, rangeStart: _from, rangeEnd: _to),
     );
     if (d != null) setState(() => _from = d);
   }
@@ -68,12 +68,12 @@ class _MyInvoicesScreenState extends State<MyInvoicesScreen> {
     final d = await showSheet<DateTime>(
       context,
       title: 'Select To date',
-      builder: (_) => _Calendar(selected: _to, first: _from, last: _today, rangeStart: _from, rangeEnd: _to),
+      builder: (_) => CalendarPicker(selected: _to, first: _from, last: _today, rangeStart: _from, rangeEnd: _to),
     );
     if (d != null) setState(() => _to = d);
   }
 
-  void _download(_Invoice i) {
+  void _download(Invoice i) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text('Invoice ${i.number} downloaded')));
@@ -84,8 +84,8 @@ class _MyInvoicesScreenState extends State<MyInvoicesScreen> {
     final app = context.watch<AppStore>();
     final c = app.connection;
     final invoices = c == null
-        ? <_Invoice>[]
-        : _invoicesFor(c, _today).where((i) => !i.date.isBefore(_from) && !i.date.isAfter(_to)).toList()..sort((a, b) => b.date.compareTo(a.date));
+        ? <Invoice>[]
+        : invoicesFor(c, _today).where((i) => !i.date.isBefore(_from) && !i.date.isAfter(_to)).toList()..sort((a, b) => b.date.compareTo(a.date));
     final total = invoices.fold<double>(0, (a, i) => a + i.amount);
     return Scaffold(
       body: SafeArea(
@@ -103,10 +103,9 @@ class _MyInvoicesScreenState extends State<MyInvoicesScreen> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(S.page, S.xs, S.page, S.sm),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text(c.label, style: T.label.copyWith(color: C.ink, fontWeight: FontWeight.w800)),
-                      Text('  ·  VC ', style: T.caption),
-                      Text(c.vcPretty, style: T.label.copyWith(color: C.ink, fontWeight: FontWeight.w800)),
-                      if (app.connections.length > 1) const Icon(Icons.keyboard_arrow_down_sharp, color: C.ink, size: 20),
+                      Text(c.label, style: T.label.copyWith(fontSize: 13, color: C.ink, fontWeight: FontWeight.w600)),
+                      Text('  ·  VC ${c.vcPretty}', style: T.caption.copyWith(fontSize: 12.5, color: C.muted)),
+                      if (app.connections.length > 1) Icon(Icons.keyboard_arrow_down_sharp, color: C.muted, size: 20),
                     ]),
                   ),
                 ),
@@ -122,13 +121,11 @@ class _MyInvoicesScreenState extends State<MyInvoicesScreen> {
           ),
           if (invoices.isNotEmpty) _Summary(invoices: invoices, total: total),
           Padding(
-            padding: const EdgeInsets.fromLTRB(S.page, S.md, S.page, S.sm),
+            padding: const EdgeInsets.fromLTRB(S.page, S.lg, S.page, S.xs),
             child: Row(children: [
-              Container(width: 3, height: 12, color: C.brand),
-              const SizedBox(width: S.sm),
-              Text('${invoices.length} ${invoices.length == 1 ? 'INVOICE' : 'INVOICES'}', style: T.overline.copyWith(fontSize: 11.5)),
-              const SizedBox(width: S.sm),
-              const Expanded(child: Divider(height: 1, color: C.line)),
+              Text('Invoices', style: T.section.copyWith(fontSize: 15, fontWeight: FontWeight.w700)),
+              const SizedBox(width: 8),
+              Text('${invoices.length}', style: T.caption.copyWith(fontSize: 12, color: C.faint)),
             ]),
           ),
           Expanded(
@@ -140,8 +137,8 @@ class _MyInvoicesScreenState extends State<MyInvoicesScreen> {
                 : ListView.separated(
                     padding: EdgeInsets.fromLTRB(S.page, 0, S.page, S.xxl + MediaQuery.paddingOf(context).bottom),
                     itemCount: invoices.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1, color: C.line),
-                    itemBuilder: (_, i) => _InvoiceRow(invoice: invoices[i], tint: const [C.brand, C.violet, C.teal, C.cobalt][i % 4], onDownload: () => _download(invoices[i])),
+                    separatorBuilder: (_, __) => Divider(height: 1, color: C.line),
+                    itemBuilder: (_, i) => _InvoiceRow(invoice: invoices[i], onDownload: () => _download(invoices[i])),
                   ),
           ),
         ]),
@@ -159,7 +156,7 @@ class _DateField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: T.caption.copyWith(fontSize: 13, color: C.muted)),
+        Text(label, style: T.caption.copyWith(fontSize: 12, color: C.muted)),
         const SizedBox(height: 6),
         Semantics(
           button: true,
@@ -170,11 +167,11 @@ class _DateField extends StatelessWidget {
               child: Container(
                 height: 52,
                 padding: const EdgeInsets.symmetric(horizontal: S.md),
-                decoration: BoxDecoration(color: C.surface, border: Border.all(color: C.cardEdge)),
+                color: C.surface,
                 child: Row(children: [
-                  const Icon(Icons.calendar_today_outlined, size: 19, color: C.brand),
+                  Icon(Icons.calendar_today_outlined, size: 18, color: C.ink),
                   const SizedBox(width: S.sm),
-                  Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(_day(date), style: T.item.copyWith(fontSize: 15)))),
+                  Expanded(child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(_day(date), style: T.item.copyWith(fontSize: 14.5, fontWeight: FontWeight.w600)))),
                 ]),
               ),
             ),
@@ -183,61 +180,67 @@ class _DateField extends StatelessWidget {
       ]);
 }
 
-/// Three solid tiles about the invoices in range.
+/// One quiet panel: invoice count, total billed (the bold one) and the
+/// latest invoice date, split by thin dividers.
 class _Summary extends StatelessWidget {
   const _Summary({required this.invoices, required this.total});
 
-  final List<_Invoice> invoices;
+  final List<Invoice> invoices;
   final double total;
 
   @override
   Widget build(BuildContext context) {
-    Widget tile(String label, String value, Color fill) => Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(S.md),
-            color: fill,
+    Widget fig(String label, String value, {bool strong = false}) => Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: S.md, vertical: 14),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(label, maxLines: 1, style: T.caption.copyWith(fontSize: 12, color: const Color(0xD9FFFFFF))),
-              const SizedBox(height: 2),
-              FittedBox(fit: BoxFit.scaleDown, child: Text(value, style: T.price.copyWith(fontSize: 19, color: Colors.white))),
+              Text(label, maxLines: 1, style: T.caption.copyWith(fontSize: 12, color: C.muted)),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(value, style: T.price.copyWith(fontSize: strong ? 19 : 16, fontWeight: strong ? FontWeight.w700 : FontWeight.w600, color: strong ? C.ink : C.inkSoft)),
+              ),
             ]),
           ),
         );
+    final rule = Padding(padding: EdgeInsets.symmetric(vertical: S.md), child: VerticalDivider(width: 1, thickness: 1, color: C.line));
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: S.page),
-      child: IntrinsicHeight(
-        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          tile('Invoices', '${invoices.length}', const Color(0xFF6656E0)),
-          const SizedBox(width: S.sm),
-          tile('Total billed', rupees(total), const Color(0xFFD9552B)),
-          const SizedBox(width: S.sm),
-          tile('Latest', '${invoices.first.date.day} ${_months[invoices.first.date.month - 1]}', const Color(0xFF0E9488)),
-        ]),
+      child: Container(
+        color: C.surface,
+        child: IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            fig('Invoices', '${invoices.length}'),
+            rule,
+            fig('Total billed', rupees(total), strong: true),
+            rule,
+            fig('Latest', '${invoices.first.date.day} ${_months[invoices.first.date.month - 1]}'),
+          ]),
+        ),
       ),
     );
   }
 }
 
+/// One invoice: white line icon, number, amount and date in grey, and a
+/// quiet download button with the orange icon as the only accent.
 class _InvoiceRow extends StatelessWidget {
-  const _InvoiceRow({required this.invoice, required this.tint, required this.onDownload});
+  const _InvoiceRow({required this.invoice, required this.onDownload});
 
-  final _Invoice invoice;
-  final Color tint;
+  final Invoice invoice;
   final VoidCallback onDownload;
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: S.md),
+        padding: const EdgeInsets.symmetric(vertical: 14),
         child: Row(children: [
-          SizedBox(width: 48, height: 48, child: Icon(Icons.receipt_long_outlined, size: 28, color: tint)),
+          SizedBox(width: 36, child: Icon(Icons.receipt_long_outlined, size: 22, color: C.inkSoft)),
           const SizedBox(width: S.md),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(invoice.number, style: T.item.copyWith(fontSize: 16)),
-              Row(children: [
-                Text(rupees(invoice.amount), style: T.label.copyWith(color: tint, fontWeight: FontWeight.w800)),
-                Text('  ·  ${_day(invoice.date)}', style: T.caption.copyWith(fontSize: 13)),
-              ]),
+              Text(invoice.number, style: T.item.copyWith(fontSize: 14, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 2),
+              Text('${rupees(invoice.amount)}  ·  ${_day(invoice.date)}', style: T.caption.copyWith(fontSize: 12, color: C.muted)),
             ]),
           ),
           Semantics(
@@ -248,8 +251,8 @@ class _InvoiceRow extends StatelessWidget {
               child: Container(
                 width: 44,
                 height: 44,
-                decoration: BoxDecoration(border: Border.all(color: C.brand, width: 1.5)),
-                child: const Icon(Icons.file_download_outlined, color: C.brand),
+                color: C.surface,
+                child: BrandShade(child: Icon(Icons.file_download_outlined, size: 21, color: C.brand)),
               ),
             ),
           ),
@@ -259,8 +262,10 @@ class _InvoiceRow extends StatelessWidget {
 
 /// A month calendar in a sheet. Days outside [first]..[last] are greyed and
 /// can't be picked; the From..To range is tinted and the chosen day is solid.
-class _Calendar extends StatefulWidget {
-  const _Calendar({required this.selected, required this.first, required this.last, required this.rangeStart, required this.rangeEnd});
+/// A month calendar in a sheet: days between [first] and [last] can be
+/// picked (the sheet closes with the day), [rangeStart]–[rangeEnd] is shaded.
+class CalendarPicker extends StatefulWidget {
+  const CalendarPicker({super.key, required this.selected, required this.first, required this.last, required this.rangeStart, required this.rangeEnd});
 
   final DateTime selected;
   final DateTime first;
@@ -269,10 +274,10 @@ class _Calendar extends StatefulWidget {
   final DateTime rangeEnd;
 
   @override
-  State<_Calendar> createState() => _CalendarState();
+  State<CalendarPicker> createState() => _CalendarPickerState();
 }
 
-class _CalendarState extends State<_Calendar> {
+class _CalendarPickerState extends State<CalendarPicker> {
   late DateTime _shown = DateTime(widget.selected.year, widget.selected.month);
 
   bool get _canPrev => DateTime(_shown.year, _shown.month - 1).isAfter(DateTime(widget.first.year, widget.first.month - 1));
@@ -291,7 +296,7 @@ class _CalendarState extends State<_Calendar> {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
           _Arrow(Icons.chevron_left_sharp, 'Previous month', _canPrev ? () => _move(-1) : null),
-          Expanded(child: Center(child: Text('${_monthsLong[_shown.month - 1]} ${_shown.year}', style: T.item.copyWith(fontSize: 17)))),
+          Expanded(child: Center(child: Text('${_monthsLong[_shown.month - 1]} ${_shown.year}', style: T.item.copyWith(fontSize: 16, fontWeight: FontWeight.w600)))),
           _Arrow(Icons.chevron_right_sharp, 'Next month', _canNext ? () => _move(1) : null),
         ]),
         const SizedBox(height: S.md),
@@ -324,8 +329,8 @@ class _CalendarState extends State<_Calendar> {
             height: 42,
             alignment: Alignment.center,
             margin: const EdgeInsets.symmetric(vertical: 1),
-            color: chosen ? C.brand : (inRange && enabled ? C.brandSoft : Colors.transparent),
-            child: Text('$n', style: T.body.copyWith(fontSize: 16, fontWeight: chosen ? FontWeight.w800 : FontWeight.w600, color: chosen ? Colors.white : (enabled ? C.ink : C.faint))),
+            decoration: BoxDecoration(gradient: chosen ? G.brand : null, color: chosen ? null : (inRange && enabled ? C.surface : Colors.transparent)),
+            child: Text('$n', style: T.body.copyWith(fontSize: 15, fontWeight: chosen ? FontWeight.w700 : FontWeight.w500, color: chosen ? Colors.white : (enabled ? C.ink : C.faint))),
           ),
         ),
       ),
@@ -350,7 +355,7 @@ class _Arrow extends StatelessWidget {
           child: Container(
             width: 44,
             height: 44,
-            decoration: BoxDecoration(color: C.surface, border: Border.all(color: C.cardEdge)),
+            color: C.surface,
             child: Icon(icon, color: onTap == null ? C.faint : C.ink),
           ),
         ),

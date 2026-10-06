@@ -174,7 +174,7 @@ class _PackDetailsScreenState extends State<PackDetailsScreen> {
                         decoration: BoxDecoration(border: Border.all(color: C.cardEdge)),
                         sliver: SliverList.separated(
                           itemCount: shown.length,
-                          separatorBuilder: (_, __) => const Divider(height: 1, color: C.line, indent: 64),
+                          separatorBuilder: (_, __) => Divider(height: 1, color: C.line, indent: 64),
                           itemBuilder: (_, i) => _channel(shown[i], !mineKeys.contains(shown[i].key) && mine.isNotEmpty),
                         ),
                       ),
@@ -199,7 +199,7 @@ class _PackDetailsScreenState extends State<PackDetailsScreen> {
   }
 
   /// Soft white text on the price card.
-  static const _soft = C.muted;
+  static Color get _soft => C.muted;
 
   Widget _fact(String value, String label) => Expanded(
         child: Column(children: [
@@ -230,7 +230,7 @@ class _PackDetailsScreenState extends State<PackDetailsScreen> {
                     Text(n, style: T.title.copyWith(color: C.onInk)),
                     Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                       Flexible(child: Text(label, textAlign: TextAlign.center, style: T.caption.copyWith(color: C.onInk, fontWeight: FontWeight.w800))),
-                      const Icon(Icons.chevron_right_sharp, size: 16, color: C.onInk),
+                      Icon(Icons.chevron_right_sharp, size: 16, color: C.onInk),
                     ]),
                   ]),
                 ),

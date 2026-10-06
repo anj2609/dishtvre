@@ -85,7 +85,7 @@ class _FilterSheetState extends State<_FilterSheet> {
     // As tall as is comfortable; Flexible lets it shrink on short screens.
     final paneH = math.min(460.0, math.max(160.0, mq.size.height * 0.5));
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      const Divider(height: 1, color: C.line),
+      Divider(height: 1, color: C.line),
       Flexible(
         child: SizedBox(
           height: paneH,
@@ -100,14 +100,14 @@ class _FilterSheetState extends State<_FilterSheet> {
                   for (final p in _Pane.values) _paneTab(p, leftStyle),
                 ]),
               ),
-              const VerticalDivider(width: 1, thickness: 1, color: C.line),
+              VerticalDivider(width: 1, thickness: 1, color: C.line),
               // Options for the selected category.
               Expanded(child: _options()),
             ]);
           }),
         ),
       ),
-      const Divider(height: 1, color: C.line),
+      Divider(height: 1, color: C.line),
       Padding(
         padding: EdgeInsets.fromLTRB(S.page, S.md, S.page, S.md + mq.padding.bottom),
         child: Row(children: [
@@ -135,7 +135,7 @@ class _FilterSheetState extends State<_FilterSheet> {
             decoration: BoxDecoration(border: Border(left: BorderSide(color: on ? C.brand : Colors.transparent, width: 3))),
             child: Row(children: [
               Expanded(child: Text(_title(p), style: style.copyWith(color: on ? C.ink : C.muted, fontWeight: on ? FontWeight.w800 : FontWeight.w600))),
-              if (n > 0) Text('$n', style: T.label.copyWith(fontSize: 12, color: C.brand)),
+              if (n > 0) BrandShade(child: Text('$n', style: T.label.copyWith(fontSize: 12, color: C.brand))),
             ]),
           ),
         ),
@@ -172,14 +172,14 @@ class _FilterSheetState extends State<_FilterSheet> {
           onTap: onTap,
           child: Container(
             padding: const EdgeInsets.fromLTRB(S.lg, 14, S.md, 14),
-            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.line))),
+            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: C.line))),
             child: Row(children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
                 width: 22,
                 height: 22,
                 decoration: BoxDecoration(
-                  color: checked ? C.brand : null,
+                  gradient: checked ? G.brand : null,
                   shape: radio ? BoxShape.circle : BoxShape.rectangle,
                   border: Border.all(color: checked ? C.brand : C.lineStrong, width: 1.5),
                 ),

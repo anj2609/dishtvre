@@ -3,24 +3,19 @@
 // [Repository] to connect the real APIs.
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'app/theme.dart';
+import 'app/theme_switch.dart';
 import 'data/repository.dart';
 import 'state/app_store.dart';
 import 'state/plan_store.dart';
 import 'ui/home/home_screen.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    statusBarBrightness: Brightness.dark,
-    systemNavigationBarColor: C.surface,
-    systemNavigationBarIconBrightness: Brightness.light,
-  ));
+  // Light or dark, as last chosen; this also sets the system bars.
+  await loadThemeMode();
   runApp(DishTvNext(repo: MockRepository()));
 }
 
@@ -40,7 +35,16 @@ class DishTvNext extends StatelessWidget {
         title: 'DishTV',
         debugShowCheckedModeBanner: false,
         theme: buildTheme(),
-        builder: (context, child) => _Responsive(child: child!),
+        // Sleek type: every text in the app at 90% of its set size (on top
+        // of the user's own text-size setting).
+        builder: (context, child) {
+          final mq = MediaQuery.of(context);
+          return MediaQuery(
+            data: mq.copyWith(textScaler: TextScaler.linear(mq.textScaler.scale(14) / 14 * 0.9)),
+            // Cross-fades the whole app when light/dark is switched.
+            child: ThemeFade(child: _Responsive(child: child!)),
+          );
+        },
         home: const HomeScreen(),
       ),
     );

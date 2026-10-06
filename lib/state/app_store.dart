@@ -45,6 +45,54 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Pay Later: [days] more TV on [vc], counted from today when it has
+  /// already switched off (which switches it back on). Returns the new
+  /// switch-off date.
+  DateTime extendSwitchOff(String vc, int days) {
+    final i = connections.indexWhere((c) => c.vc == vc);
+    final c = connections[i];
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final from = c.daysLeft(now) > 0 ? DateTime(c.switchOffDate.year, c.switchOffDate.month, c.switchOffDate.day) : today;
+    final off = from.add(Duration(days: days));
+    connections = [...connections]
+      ..[i] = Connection(
+        vc: c.vc,
+        label: c.label,
+        type: c.type,
+        status: c.status == ConnectionStatus.deactivated ? ConnectionStatus.active : c.status,
+        monthlyRecharge: c.monthlyRecharge,
+        balance: c.balance,
+        switchOffDate: off,
+        lockInUntil: c.lockInUntil,
+        planName: c.planName,
+        isHd: c.isHd,
+      );
+    notifyListeners();
+    return off;
+  }
+
+  /// Ends a vacation now: the TV is switched back on.
+  void endVacation(String vc) {
+    final i = connections.indexWhere((c) => c.vc == vc);
+    if (i < 0) return;
+    final c = connections[i];
+    connections = [...connections]
+      ..[i] = Connection(
+        vc: c.vc,
+        label: c.label,
+        type: c.type,
+        status: ConnectionStatus.active,
+        monthlyRecharge: c.monthlyRecharge,
+        balance: c.balance,
+        switchOffDate: c.switchOffDate,
+        lockInUntil: c.lockInUntil,
+        planName: c.planName,
+        isHd: c.isHd,
+      );
+    notifyListeners();
+  }
+
   void select(int i) {
     if (i == _selected) return;
     _selected = i;

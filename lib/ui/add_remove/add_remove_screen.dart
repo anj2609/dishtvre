@@ -133,7 +133,7 @@ class _AddRemoveScreenState extends State<AddRemoveScreen> {
                         textAlign: TextAlign.end,
                       ),
                     ),
-                    if (canSwitch) ...[const SizedBox(width: 4), const Icon(Icons.keyboard_arrow_down_sharp, size: 20, color: C.ink)],
+                    if (canSwitch) ...[const SizedBox(width: 4), Icon(Icons.keyboard_arrow_down_sharp, size: 20, color: C.ink)],
                   ]),
                 ),
               ),
@@ -210,7 +210,7 @@ class _AddRemoveScreenState extends State<AddRemoveScreen> {
             Expanded(child: Text('${_f.count} ${_f.count == 1 ? 'filter' : 'filters'} on', style: T.caption)),
             TextButton(
               onPressed: () => setState(() => _f = ChannelFilter(hd: _f.hd)),
-              child: Text('Clear filters', style: T.label.copyWith(color: C.brand)),
+              child: BrandShade(child: Text('Clear filters', style: T.label.copyWith(color: C.brand))),
             ),
           ]),
         ],
@@ -254,14 +254,14 @@ class _AddRemoveScreenState extends State<AddRemoveScreen> {
             width: 44,
             height: 40,
             child: Stack(alignment: Alignment.center, children: [
-              Icon(Icons.filter_alt_outlined, size: 22, color: n > 0 ? C.brand : C.ink),
+              BrandShade(on: n > 0, child: Icon(Icons.filter_alt_outlined, size: 22, color: n > 0 ? C.brand : C.ink)),
               if (n > 0)
                 Positioned(
                   top: 3,
                   right: 4,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
-                    color: C.brand,
+                    decoration: const BoxDecoration(gradient: G.brand),
                     child: Text('$n', textScaler: TextScaler.noScaling, style: T.label.copyWith(fontSize: 10, color: Colors.white)),
                   ),
                 ),
@@ -315,7 +315,7 @@ class _AddRemoveScreenState extends State<AddRemoveScreen> {
         _TileGrid(items: items, plan: plan, showTrend: showTrend),
       ],
       const SizedBox(height: S.lg),
-      const Divider(height: 1, color: C.line),
+      Divider(height: 1, color: C.line),
     ]);
   }
 
@@ -379,8 +379,8 @@ class _AddRemoveScreenState extends State<AddRemoveScreen> {
                   Text(rupees(total), style: T.item.copyWith(fontSize: 16)),
                   const SizedBox(height: 2),
                   Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text(open ? 'Hide details' : 'View details', style: T.label.copyWith(fontSize: 13, color: C.brand)),
-                    Icon(open ? Icons.keyboard_arrow_up_sharp : Icons.keyboard_arrow_down_sharp, size: 18, color: C.brand),
+                    BrandShade(child: Text(open ? 'Hide details' : 'View details', style: T.label.copyWith(fontSize: 13, color: C.brand))),
+                    BrandShade(child: Icon(open ? Icons.keyboard_arrow_up_sharp : Icons.keyboard_arrow_down_sharp, size: 18, color: C.brand)),
                   ]),
                 ]),
               ]),
@@ -389,7 +389,7 @@ class _AddRemoveScreenState extends State<AddRemoveScreen> {
         ),
       ),
       if (open) key == 'base' ? _baseDetails(plan) : Column(children: [for (final i in items) PlanItemRow(item: i, plan: plan)]),
-      const Divider(height: 1, color: C.line),
+      Divider(height: 1, color: C.line),
     ]);
   }
 
@@ -517,21 +517,21 @@ class _Tile extends StatelessWidget {
                       child: Container(
                         width: 22,
                         height: 22,
-                        decoration: BoxDecoration(color: C.brand, shape: BoxShape.circle, border: Border.all(color: C.bg, width: 2)),
+                        decoration: BoxDecoration(gradient: G.brand, shape: BoxShape.circle, border: Border.all(color: C.bg, width: 2)),
                         child: const Icon(Icons.check_sharp, size: 14, color: Colors.white),
                       ),
                     ),
                 ]),
               ),
               const SizedBox(height: S.sm),
-              Text(i.name, textAlign: TextAlign.center, style: style.copyWith(color: added ? C.brand : C.ink)),
+              BrandShade(on: added, child: Text(i.name, textAlign: TextAlign.center, style: style.copyWith(color: added ? C.brand : C.ink))),
               const SizedBox(height: 2),
               Text(rupees(i.price), textAlign: TextAlign.center, style: T.caption.copyWith(fontSize: 12)),
               if (showTrend && i.trend != null) ...[
                 const SizedBox(height: 2),
                 Text.rich(
                   TextSpan(children: [
-                    const WidgetSpan(alignment: PlaceholderAlignment.middle, child: Icon(Icons.trending_up_sharp, size: 13, color: C.brand)),
+                    WidgetSpan(alignment: PlaceholderAlignment.middle, child: BrandShade(child: Icon(Icons.trending_up_sharp, size: 13, color: C.brand))),
                     TextSpan(text: ' ${i.trend}'),
                   ]),
                   textAlign: TextAlign.center,

@@ -21,20 +21,23 @@ class Glow extends StatelessWidget {
   const Glow({
     super.key,
     required this.child,
-    this.color = C.brand,
+    this.color,
     this.at = Alignment.topRight,
     this.strength = 0.16,
     this.radius = R.xl,
   });
 
   final Widget child;
-  final Color color;
+
+  /// Defaults to the accent.
+  final Color? color;
   final Alignment at;
   final double strength;
   final double radius;
 
   @override
   Widget build(BuildContext context) {
+    final color = this.color ?? C.brand;
     final fill = Color.lerp(C.cardTop, color, strength)!;
     final edge = strength >= 1 ? Color.lerp(color, Colors.black, 0.25)! : Color.lerp(C.cardEdge, color, strength)!;
     return Container(
@@ -64,7 +67,7 @@ class EdgeFade extends StatelessWidget {
 
 /// An endless row of channel logos gliding sideways. Decorative.
 class LogoMarquee extends StatefulWidget {
-  const LogoMarquee({super.key, required this.logos, this.size = 44, this.gap = 10, this.speed = 22, this.reverse = false, this.ring = C.brand});
+  const LogoMarquee({super.key, required this.logos, this.size = 44, this.gap = 10, this.speed = 22, this.reverse = false, this.ring, this.outline = false, this.square = false});
 
   /// (channel name, logo url)
   final List<(String, String?)> logos;
@@ -74,7 +77,13 @@ class LogoMarquee extends StatefulWidget {
   /// Logical pixels per second.
   final double speed;
   final bool reverse;
-  final Color ring;
+  final Color? ring;
+
+  /// App icons (square) instead of channel logos (round).
+  final bool square;
+
+  /// Hairline edge on each logo, for light backgrounds.
+  final bool outline;
 
   @override
   State<LogoMarquee> createState() => _LogoMarqueeState();
@@ -118,7 +127,9 @@ class _LogoMarqueeState extends State<LogoMarquee> with SingleTickerProviderStat
       for (final l in [...widget.logos, ...widget.logos, ...widget.logos])
         Padding(
           padding: EdgeInsets.only(right: widget.gap),
-          child: ChannelLogo(name: l.$1, url: l.$2, size: widget.size, ring: widget.ring),
+          child: widget.square
+              ? AppLogo(name: l.$1, url: l.$2, size: widget.size)
+              : ChannelLogo(name: l.$1, url: l.$2, size: widget.size, ring: widget.ring, outline: widget.outline),
         ),
     ]);
     return ExcludeSemantics(
@@ -267,7 +278,7 @@ class _Bit {
         spin = (r.nextDouble() - 0.5) * 14,
         size = 5 + r.nextDouble() * 6,
         delay = r.nextDouble() * 0.25,
-        color = const [C.brand, Color(0xFFFF9B78), C.inkSoft, C.violet, Color(0xFFE2B45A), C.muted][r.nextInt(6)];
+        color = [C.brand, Color(0xFFFF9B78), C.inkSoft, C.violet, Color(0xFFE2B45A), C.muted][r.nextInt(6)];
 
   final double x, drift, speed, spin, size, delay;
   final Color color;
@@ -317,7 +328,7 @@ class GlassIconButton extends StatelessWidget {
       message: label,
       child: Material(
         color: C.glass,
-        shape: const CircleBorder(side: BorderSide(color: C.glassLine)),
+        shape: CircleBorder(side: BorderSide(color: C.glassLine)),
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: onTap,
@@ -333,7 +344,7 @@ class GlassIconButton extends StatelessWidget {
                   child: Container(
                     width: 8,
                     height: 8,
-                    decoration: BoxDecoration(color: C.brand, shape: BoxShape.circle, border: Border.all(color: C.night, width: 1.5)),
+                    decoration: BoxDecoration(gradient: G.brand, shape: BoxShape.circle, border: Border.all(color: C.night, width: 1.5)),
                   ),
                 ),
             ]),

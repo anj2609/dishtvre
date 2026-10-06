@@ -130,7 +130,7 @@ class _TopUpsScreenState extends State<TopUpsScreen> {
                   padding: const EdgeInsets.fromLTRB(S.page, S.lg, S.page, S.sm),
                   child: Row(children: [
                     Expanded(child: Text('${items.length} ${_kind == ItemKind.alaCarte ? 'channels' : 'options'}', style: T.label)),
-                    if (addedHere > 0) Text('$addedHere added', style: T.label.copyWith(color: C.brand)),
+                    if (addedHere > 0) BrandShade(child: Text('$addedHere added', style: T.label.copyWith(color: C.brand))),
                   ]),
                 ),
                 if (all == null)
@@ -232,8 +232,8 @@ class _ItemCard extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: i.isRecordingPlan ? C.danger : C.lineStrong, width: 1.5)),
                   child: i.isRecordingPlan
-                      ? const Icon(Icons.fiber_manual_record_sharp, color: C.danger, size: 18)
-                      : Text(initials, style: T.label.copyWith(color: C.brandDeep, fontSize: 12)),
+                      ? Icon(Icons.fiber_manual_record_sharp, color: C.danger, size: 18)
+                      : BrandShade(child: Text(initials, style: T.label.copyWith(color: C.brandDeep, fontSize: 12))),
                 ),
               const SizedBox(width: S.md),
               Expanded(
@@ -254,7 +254,7 @@ class _ItemCard extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: added
-                    ? const BoxDecoration(color: C.brand, shape: BoxShape.circle)
+                    ? const BoxDecoration(gradient: G.brand, shape: BoxShape.circle)
                     : BoxDecoration(
                         color: null,
                         shape: BoxShape.circle,
@@ -263,11 +263,14 @@ class _ItemCard extends StatelessWidget {
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 160),
                   transitionBuilder: (c, a) => ScaleTransition(scale: a, child: c),
-                  child: Icon(
-                    added ? Icons.check_sharp : Icons.add_sharp,
+                  child: BrandShade(
                     key: ValueKey(added),
-                    size: 20,
-                    color: added ? Colors.white : C.brand,
+                    on: !added,
+                    child: Icon(
+                      added ? Icons.check_sharp : Icons.add_sharp,
+                      size: 20,
+                      color: added ? Colors.white : C.brand,
+                    ),
                   ),
                 ),
               ),

@@ -52,18 +52,30 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
     ('Original', null),
     ('Mono', _mono(1)),
     ('Noir', _mono(1.45)),
-    ('Warm', [1.12, 0, 0, 0, 8, 0, 1.0, 0, 0, 2, 0, 0, 0.84, 0, -12, 0, 0, 0, 1, 0]),
-    ('Cool', [0.88, 0, 0, 0, -8, 0, 1.0, 0, 0, 0, 0, 0, 1.16, 0, 14, 0, 0, 0, 1, 0]),
+    (
+      'Warm',
+      [1.12, 0, 0, 0, 8, 0, 1.0, 0, 0, 2, 0, 0, 0.84, 0, -12, 0, 0, 0, 1, 0]
+    ),
+    (
+      'Cool',
+      [0.88, 0, 0, 0, -8, 0, 1.0, 0, 0, 0, 0, 0, 1.16, 0, 14, 0, 0, 0, 1, 0]
+    ),
     ('Vivid', _saturate(1.55)),
-    ('Fade', [0.8, 0, 0, 0, 34, 0, 0.8, 0, 0, 34, 0, 0, 0.8, 0, 34, 0, 0, 0, 1, 0]),
+    (
+      'Fade',
+      [0.8, 0, 0, 0, 34, 0, 0.8, 0, 0, 34, 0, 0, 0.8, 0, 34, 0, 0, 0, 1, 0]
+    ),
   ];
 
   /// The photo with the current flip and effect.
   Widget _styled(double side, int effect) {
-    Widget img = Image.memory(widget.bytes, width: side, height: side, fit: BoxFit.cover, gaplessPlayback: true);
+    Widget img = Image.memory(widget.bytes,
+        width: side, height: side, fit: BoxFit.cover, gaplessPlayback: true);
     if (_flip) img = Transform.flip(flipX: true, child: img);
     final m = _effects[effect].$2;
-    return m == null ? img : ColorFiltered(colorFilter: ColorFilter.matrix(m), child: img);
+    return m == null
+        ? img
+        : ColorFiltered(colorFilter: ColorFilter.matrix(m), child: img);
   }
 
   @override
@@ -88,7 +100,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
   Future<void> _use() async {
     setState(() => _saving = true);
     final nav = Navigator.of(context);
-    final ro = _frame.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+    final ro =
+        _frame.currentContext!.findRenderObject()! as RenderRepaintBoundary;
     final image = await ro.toImage(pixelRatio: 600 / ro.size.width);
     final data = await image.toByteData(format: ui.ImageByteFormat.png);
     image.dispose();
@@ -113,11 +126,17 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
               width: 58,
               height: 58,
               padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: on ? C.brand : Colors.transparent, width: 2)),
+              decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: on ? C.brand : Colors.transparent, width: 2)),
               child: ClipOval(child: _styled(52, i)),
             ),
             const SizedBox(height: 6),
-            Text(name, textScaler: TextScaler.noScaling, style: T.label.copyWith(fontSize: 12, color: on ? C.brand : C.muted)),
+            BrandShade(on: on, child: Text(name,
+                textScaler: TextScaler.noScaling,
+                style: T.label
+                    .copyWith(fontSize: 12, color: on ? C.brand : C.muted))),
           ]),
         ),
       ),
@@ -130,66 +149,100 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
       body: SafeArea(
         bottom: false,
         child: Column(children: [
-          const Header(title: 'Edit photo', subtitle: 'Pinch to zoom, drag to move'),
+          const Header(
+              title: 'Edit photo', subtitle: 'Pinch to zoom, drag to move'),
           Expanded(
             child: LayoutBuilder(builder: (context, box) {
-              final side = math.max(160.0, math.min(420.0, math.min(box.maxWidth - S.page * 2, box.maxHeight - 200)));
+              final side = math.max(
+                  160.0,
+                  math.min(
+                      420.0,
+                      math.min(
+                          box.maxWidth - S.page * 2, box.maxHeight - 200)));
               return SingleChildScrollView(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(minHeight: box.maxHeight),
-                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    SizedBox(
-                      width: side,
-                      height: side,
-                      child: Stack(children: [
-                        // What gets saved: the photo, framed.
-                        RepaintBoundary(
-                          key: _frame,
-                          child: ClipRect(
-                            child: InteractiveViewer(
-                              transformationController: _view,
-                              minScale: 1,
-                              maxScale: 6,
-                              child: SizedBox(
-                                width: side,
-                                height: side,
-                                child: RotatedBox(quarterTurns: _turns, child: _styled(side, _effect)),
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: side,
+                          height: side,
+                          child: Stack(children: [
+                            // What gets saved: the photo, framed.
+                            RepaintBoundary(
+                              key: _frame,
+                              child: ClipRect(
+                                child: InteractiveViewer(
+                                  transformationController: _view,
+                                  minScale: 1,
+                                  maxScale: 6,
+                                  child: SizedBox(
+                                    width: side,
+                                    height: side,
+                                    child: RotatedBox(
+                                        quarterTurns: _turns,
+                                        child: _styled(side, _effect)),
+                                  ),
+                                ),
                               ),
                             ),
+                            // The circle it will be shown in.
+                            IgnorePointer(
+                                child: CustomPaint(
+                                    size: Size.square(side),
+                                    painter: _CircleMask())),
+                          ]),
+                        ),
+                        const SizedBox(height: S.lg),
+                        Wrap(
+                            spacing: S.sm,
+                            runSpacing: S.sm,
+                            alignment: WrapAlignment.center,
+                            children: [
+                              _Tool(
+                                  icon: Icons.rotate_90_degrees_ccw_outlined,
+                                  label: 'Rotate',
+                                  onTap: _rotate),
+                              _Tool(
+                                  icon: Icons.flip_outlined,
+                                  label: 'Flip',
+                                  active: _flip,
+                                  onTap: () => setState(() => _flip = !_flip)),
+                              _Tool(
+                                  icon: Icons.restart_alt_sharp,
+                                  label: 'Reset',
+                                  onTap: _reset),
+                            ]),
+                        const SizedBox(height: S.lg),
+                        // Effects: small previews of this photo in each look.
+                        SizedBox(
+                          height: 92,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: S.page),
+                            itemCount: _effects.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: S.md),
+                            itemBuilder: (_, i) => _effectChip(i),
                           ),
                         ),
-                        // The circle it will be shown in.
-                        IgnorePointer(child: CustomPaint(size: Size.square(side), painter: _CircleMask())),
                       ]),
-                    ),
-                    const SizedBox(height: S.lg),
-                    Wrap(spacing: S.sm, runSpacing: S.sm, alignment: WrapAlignment.center, children: [
-                      _Tool(icon: Icons.rotate_90_degrees_ccw_outlined, label: 'Rotate', onTap: _rotate),
-                      _Tool(icon: Icons.flip_outlined, label: 'Flip', active: _flip, onTap: () => setState(() => _flip = !_flip)),
-                      _Tool(icon: Icons.restart_alt_sharp, label: 'Reset', onTap: _reset),
-                    ]),
-                    const SizedBox(height: S.lg),
-                    // Effects: small previews of this photo in each look.
-                    SizedBox(
-                      height: 92,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: S.page),
-                        itemCount: _effects.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: S.md),
-                        itemBuilder: (_, i) => _effectChip(i),
-                      ),
-                    ),
-                  ]),
                 ),
               );
             }),
           ),
           BottomBar(
             child: Row(children: [
-              Expanded(child: SecondaryButton(label: 'Cancel', onTap: () => Navigator.of(context).pop())),
+              Expanded(
+                  child: SecondaryButton(
+                      label: 'Cancel',
+                      onTap: () => Navigator.of(context).pop())),
               const SizedBox(width: S.md),
-              Expanded(child: PrimaryButton(label: 'Use photo', busy: _saving, onTap: _use)),
+              Expanded(
+                  child: PrimaryButton(
+                      label: 'Use photo', busy: _saving, onTap: _use)),
             ]),
           ),
         ]),
@@ -224,7 +277,11 @@ class _CircleMask extends CustomPainter {
 }
 
 class _Tool extends StatelessWidget {
-  const _Tool({required this.icon, required this.label, required this.onTap, this.active = false});
+  const _Tool(
+      {required this.icon,
+      required this.label,
+      required this.onTap,
+      this.active = false});
 
   final IconData icon;
   final String label;
@@ -233,17 +290,23 @@ class _Tool extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-        color: active ? C.brand : Colors.transparent,
-        shape: RoundedRectangleBorder(side: BorderSide(color: active ? C.brand : C.lineStrong)),
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(icon, size: 19, color: active ? Colors.white : C.ink),
-              const SizedBox(width: 6),
-              Text(label, style: T.label.copyWith(color: active ? Colors.white : C.ink)),
-            ]),
+        type: MaterialType.transparency,
+        shape: RoundedRectangleBorder(
+            side: BorderSide(color: active ? C.brand : C.lineStrong)),
+        child: Ink(
+          decoration: BoxDecoration(gradient: active ? G.brand : null),
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(icon, size: 19, color: active ? Colors.white : C.ink),
+                const SizedBox(width: 6),
+                Text(label,
+                    style:
+                        T.label.copyWith(color: active ? Colors.white : C.ink)),
+              ]),
+            ),
           ),
         ),
       );
