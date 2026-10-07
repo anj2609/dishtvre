@@ -19,7 +19,15 @@ class PlanStore extends ChangeNotifier {
   bool loadingItems = false;
 
   Future<void> open(Connection c) async {
-    if (connection?.vc == c.vc && items.isNotEmpty) return;
+    if (connection?.vc == c.vc && items.isNotEmpty) {
+      // Same TV: keep the pending changes, but take its latest details
+      // (a recharge or a new pack changes its monthly amount).
+      if (!identical(connection, c)) {
+        connection = c;
+        notifyListeners();
+      }
+      return;
+    }
     connection = c;
     _reset();
     loadingItems = true;
@@ -39,6 +47,8 @@ class PlanStore extends ChangeNotifier {
     _catalogs.clear();
     _channels.clear();
     quote = null;
+    _quoteFor++; // answers still on their way are for the old plan
+    _lastBill = null;
     applyState = ApplyState.idle;
     orderId = null;
   }
@@ -109,20 +119,38 @@ class PlanStore extends ChangeNotifier {
         ..._added.values,
       ];
 
-  /// Quick estimate before the server prices it: current bill, plus the
-  /// pack switch and top-ups, minus removals (GST included, NCF as now).
-  double get estimate {
-    var t = currentTotal;
-    if (newBase != null) t += newBase!.price - (basePack?.price ?? 0);
-    t -= removed.fold(0.0, (a, i) => a + i.price);
-    t += added.fold(0.0, (a, i) => a + i.price);
-    return t < 0 ? 0 : t;
-  }
+  /// The new monthly bill, from the same server quote Review shows. With no
+  /// changes it's the current bill. While a change is being priced it keeps
+  /// the last price (see [pricing]).
+  double get newBill => !hasChanges ? currentTotal : (quote?.total ?? _lastBill ?? currentTotal);
+
+  /// A change is being priced; [newBill] is the previous price until then.
+  bool get pricing => hasChanges && quote == null;
+
+  double? _lastBill;
+
+  /// Which edit the latest quote request was for; older answers are dropped.
+  int _quoteFor = 0;
 
   void _changed() {
     quote = null;
     if (applyState != ApplyState.applying) applyState = ApplyState.idle;
     notifyListeners();
+    _requote();
+  }
+
+  Future<void> _requote() async {
+    final ask = ++_quoteFor;
+    if (!hasChanges) return;
+    try {
+      final q = await repo.quote(finalItems: finalItems);
+      if (ask != _quoteFor) return;
+      quote = q;
+      _lastBill = q.total;
+      notifyListeners();
+    } catch (_) {
+      // Review asks again and shows the error there.
+    }
   }
 
   // ------------------------------------------------------------------ packs
@@ -192,10 +220,19 @@ class PlanStore extends ChangeNotifier {
 
   Future<bool> review() async {
     if (!hasChanges) return false;
+    if (quote != null) {
+      applyState = ApplyState.ready;
+      notifyListeners();
+      return true;
+    }
+    final ask = ++_quoteFor;
     applyState = ApplyState.quoting;
     notifyListeners();
     try {
-      quote = await repo.quote(finalItems: finalItems);
+      final q = await repo.quote(finalItems: finalItems);
+      if (ask != _quoteFor) return false;
+      quote = q;
+      _lastBill = q.total;
       applyState = ApplyState.ready;
       notifyListeners();
       return true;
@@ -212,7 +249,7 @@ class PlanStore extends ChangeNotifier {
     applyState = ApplyState.applying;
     notifyListeners();
     try {
-      orderId = await repo.apply(finalItems: finalItems);
+      orderId = await repo.apply(vc: connection!.vc, finalItems: finalItems);
       applied = (base: newBase, added: added, removed: removed, previous: currentTotal, next: q.total);
       applyState = ApplyState.done;
       notifyListeners();
@@ -225,10 +262,19 @@ class PlanStore extends ChangeNotifier {
   }
 
   /// After success: the plan starts fresh from the server next time.
-  void finish() {
-    final c = connection;
+  /// [updated] is the TV as it is now (new pack name and monthly amount).
+  void finish([Connection? updated]) {
+    final c = updated ?? connection;
     connection = null;
     _reset();
     if (c != null) open(c);
+  }
+
+  /// Loads [c]'s plan again after it changed outside this store (Upgrade
+  /// to HD), dropping any pending edits.
+  Future<void> reload(Connection c) async {
+    connection = null;
+    _reset();
+    await open(c);
   }
 }

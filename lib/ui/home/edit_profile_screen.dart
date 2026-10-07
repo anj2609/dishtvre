@@ -281,9 +281,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   /// Share of the profile filled in, and what to add next.
   (double, String?) get _completeness {
     final checks = <(bool, String)>[
-      (_nameErr == null, 'Add your full name'),
-      (_mobileErr == null, 'Add your mobile number'),
-      (_email.text.trim().isNotEmpty && _emailErr == null, 'Add an email for bills and statements'),
+      // A field that's filled in but wrong asks to be checked, not added.
+      (_nameErr == null, _name.text.trim().isEmpty ? 'Add your full name' : 'Check your name'),
+      (_mobileErr == null, _mobile.text.trim().isEmpty ? 'Add your mobile number' : 'Check your mobile number'),
+      (_email.text.trim().isNotEmpty && _emailErr == null,
+          _email.text.trim().isEmpty ? 'Add an email for bills and statements' : 'Check your email address'),
       (_houseErr == null && _streetErr == null, 'Add your house and street'),
       (_cityErr == null && _pincodeErr == null && _stateErr == null, 'Add your city, pincode and state'),
       (_landmark.text.trim().isNotEmpty, 'Add a landmark to help our technician find you'),
@@ -301,10 +303,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       subtitle: 'You have $n unsaved ${n == 1 ? 'change' : 'changes'}.',
       builder: (ctx) => Padding(
         padding: EdgeInsets.fromLTRB(S.page, S.sm, S.page, S.lg + MediaQuery.paddingOf(ctx).bottom),
-        child: Row(children: [
-          Expanded(child: SecondaryButton(label: 'Keep editing', onTap: () => Navigator.of(ctx).pop(false))),
-          const SizedBox(width: S.md),
-          Expanded(child: PrimaryButton(label: 'Discard changes', onTap: () => Navigator.of(ctx).pop(true))),
+        // A Column with min size, so the buttons keep their own height
+        // instead of stretching to the sheet's.
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Row(children: [
+            Expanded(child: SecondaryButton(label: 'Keep editing', onTap: () => Navigator.of(ctx).pop(false))),
+            const SizedBox(width: S.md),
+            Expanded(child: PrimaryButton(label: 'Discard changes', onTap: () => Navigator.of(ctx).pop(true))),
+          ]),
         ]),
       ),
     );

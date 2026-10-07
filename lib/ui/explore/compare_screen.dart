@@ -137,7 +137,8 @@ class _CompareScreenState extends State<CompareScreen> {
                   padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
                   decoration: BoxDecoration(color: _colColor(i), border: chosen ? Border.all(color: Colors.white, width: 2) : null),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(chosen ? 'CHOSEN' : c.tag, style: T.overline.copyWith(fontSize: 10, color: const Color(0xD9FFFFFF))),
+                    // Keeps its letter when chosen, so the A / B in the tables below still match.
+                    Text(chosen ? '${c.tag} · CHOSEN' : c.tag, style: T.overline.copyWith(fontSize: 10, color: const Color(0xD9FFFFFF))),
                     const SizedBox(height: 4),
                     Text(c.name, style: T.label.copyWith(fontSize: 13, height: 1.25, color: Colors.white)),
                     const Spacer(),

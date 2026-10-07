@@ -1,6 +1,6 @@
-// Pause Connection ("Vacation Mode"): pause a TV's pack while you're away
-// and have it switch back on by itself. Pick the TV and the dates (7 to 90
-// days), review the pause and the credit you get back, activate, and a
+// Vacation Mode: pause a TV's pack while you're away and have it switch
+// back on by itself. Pick the TV and the dates (7 to 90 days), review the
+// pause and the new switch-off date (the paused days move it out), activate, and a
 // short check plays before the confirmation. A TV with a pause booked can
 // change or cancel it; one already on vacation can end it early; one that's
 // switched off is sent to Recharge. Every state has a way forward.
@@ -27,20 +27,28 @@ String _short(DateTime d) => '${d.day} ${_monthNames[d.month - 1]}';
 DateTime _day(DateTime d) => DateTime(d.year, d.month, d.day);
 DateTime get _today => _day(DateTime.now());
 
-/// Pauses booked this session: VC → (pause from, resume on).
-final vacations = ValueNotifier<Map<String, (DateTime, DateTime)>>({});
+/// The pause booked on [c] for later, as (pause from, resume on).
+(DateTime, DateTime)? _booked(Connection c) => c.vacationBooked ? (c.pauseFrom!, c.resumeOn!) : null;
+
+/// [c]'s switch-off date without its booked pause, so changing the dates
+/// doesn't add the days twice.
+DateTime _offBeforePause(Connection c) {
+  final b = _booked(c);
+  final off = _day(c.switchOffDate);
+  return b == null ? off : off.subtract(Duration(days: b.$2.difference(b.$1).inDays));
+}
 
 enum _Can { ok, booked, onVacation, off }
 
 _Can _can(Connection c) {
-  if (vacations.value.containsKey(c.vc)) return _Can.booked;
+  if (c.vacationBooked) return _Can.booked;
   if (c.status == ConnectionStatus.vacation) return _Can.onVacation;
   if (c.status == ConnectionStatus.deactivated || c.daysLeft(DateTime.now()) <= 0) return _Can.off;
   return _Can.ok;
 }
 
-/// When a TV that's already on vacation comes back (mock data has no date).
-DateTime _backOn(Connection c) => _today.add(const Duration(days: 9));
+/// When a TV that's already on vacation comes back.
+DateTime _backOn(Connection c) => _day(c.resumeOn ?? _today.add(const Duration(days: 9)));
 
 /// The pause has to start while the TV still has days left, and within
 /// two months.
@@ -52,8 +60,6 @@ DateTime _lastStart(Connection c) {
   return last.isBefore(tomorrow) ? tomorrow : last;
 }
 
-/// Money back for the paused days, as credit when the TV resumes.
-double _credit(Connection c, int days) => (c.monthlyRecharge * days / 30).roundToDouble();
 
 class VacationModeScreen extends StatefulWidget {
   const VacationModeScreen({super.key});
@@ -80,7 +86,7 @@ class _VacationModeScreenState extends State<VacationModeScreen> {
     if (_forVc == c.vc) return;
     if (_forVc != null) _editing = false;
     _forVc = c.vc;
-    final booked = vacations.value[c.vc];
+    final booked = _booked(c);
     _from = booked?.$1 ?? _today.add(const Duration(days: 1));
     _resume = booked?.$2 ?? _from.add(const Duration(days: 14));
   }
@@ -133,7 +139,7 @@ class _VacationModeScreenState extends State<VacationModeScreen> {
   }
 
   Future<void> _cancelBooked(Connection c) async {
-    final b = vacations.value[c.vc]!;
+    final b = _booked(c)!;
     final yes = await _confirm(
       title: 'Cancel this vacation?',
       subtitle: '${c.label} won\'t pause on ${_short(b.$1)}. It keeps running as usual.',
@@ -142,7 +148,7 @@ class _VacationModeScreenState extends State<VacationModeScreen> {
     );
     if (yes != true || !mounted) return;
     HapticFeedback.mediumImpact();
-    vacations.value = {...vacations.value}..remove(c.vc);
+    context.read<AppStore>().cancelVacation(c.vc);
     _forVc = null;
     _toast('Vacation cancelled for ${c.label}');
   }
@@ -183,12 +189,11 @@ class _VacationModeScreenState extends State<VacationModeScreen> {
     final app = context.watch<AppStore>();
     final c = app.connection;
     if (c == null) return Scaffold(body: SafeArea(child: Column(children: const [Header(title: 'Vacation Mode')])));
-    return ValueListenableBuilder<Map<String, (DateTime, DateTime)>>(
-      valueListenable: vacations,
-      builder: (context, _, __) {
+    return Builder(
+      builder: (context) {
         _datesFor(c);
         final can = _can(c) == _Can.booked && _editing ? _Can.ok : _can(c);
-        final booked = vacations.value[c.vc];
+        final booked = _booked(c);
         return Scaffold(
           body: SafeArea(
             bottom: false,
@@ -223,10 +228,17 @@ class _VacationModeScreenState extends State<VacationModeScreen> {
                     Reveal(
                       order: 1,
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('Going on vacation?', style: T.title.copyWith(fontSize: 19, fontWeight: FontWeight.w700)),
+                        // The heading says where this TV is now.
+                        Text(
+                            switch (can) {
+                              _Can.booked => 'Vacation booked',
+                              _Can.onVacation => '${c.label} is on vacation',
+                              _ => 'Going on vacation?',
+                            },
+                            style: T.title.copyWith(fontSize: 19, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 6),
                         Text(
-                            'Pause your pack while you\'re away. It resumes by itself on the date you choose, and the days you don\'t watch come back as credit.',
+                            'Pause your pack while you\'re away. It switches back on by itself on the date you choose, and the paused days are added to your switch-off date.',
                             style: T.body.copyWith(fontSize: 14, height: 1.5)),
                         const SizedBox(height: S.md),
                         _status(c, can, booked),
@@ -259,7 +271,7 @@ class _VacationModeScreenState extends State<VacationModeScreen> {
                       const SizedBox(height: S.xxl),
                       _how(Icons.tv_off_outlined, 'Channels stop ', 'while you\'re away', ''),
                       _how(Icons.event_repeat_outlined, 'Your TV ', 'switches back on by itself', ' on the resume date'),
-                      _how(Icons.savings_outlined, 'Unused days come back as ', 'credit', ' when you return'),
+                      _how(Icons.event_available_outlined, 'Paused days are ', 'added to your switch-off date', ''),
                     ] else
                       Reveal(order: 2, child: _stateCard(app, c, can, booked)),
                   ],
@@ -335,7 +347,7 @@ class _VacationModeScreenState extends State<VacationModeScreen> {
           Icons.event_available_outlined,
           '${_short(booked!.$1)} – ${_short(booked.$2)}',
           '${c.label} pauses on ${_date(booked.$1)} and switches back on by itself on ${_date(booked.$2)}. '
-              '${rupees(_credit(c, booked.$2.difference(booked.$1).inDays))} comes back as credit.',
+              'Its switch-off date moves to ${_date(c.switchOffDate)}.',
         ),
       _Can.onVacation => (
           Icons.luggage_outlined,
@@ -456,9 +468,9 @@ class _ReviewScreen extends StatelessWidget {
   int get _days => resume.difference(from).inDays;
 
   Future<void> _activate(BuildContext context) async {
+    final app = context.read<AppStore>();
     final days = _days;
-    final credit = _credit(c, days);
-    final newOff = _day(c.switchOffDate).add(Duration(days: days));
+    final newOff = _offBeforePause(c).add(Duration(days: days));
     await Navigator.of(context).push(PageRouteBuilder(
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (_, __, ___) => PaymentCheckScreen(
@@ -470,8 +482,8 @@ class _ReviewScreen extends StatelessWidget {
         subtitle: '${c.label}  ·  ${_short(from)} – ${_short(resume)}',
         steps: ['Checking ${c.label} can pause', 'Booking your pause', 'Setting up the automatic restart'],
         onSuccess: () {
-          vacations.value = {...vacations.value, c.vc: (from, resume)};
-          return _VacationSuccess(tv: c.label, vc: c.vcPretty, from: from, resume: resume, credit: credit, newOff: newOff);
+          app.bookVacation(c.vc, from: from, resume: resume);
+          return _VacationSuccess(tv: c.label, vc: c.vcPretty, from: from, resume: resume, newOff: newOff);
         },
       ),
       transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
@@ -481,7 +493,7 @@ class _ReviewScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final days = _days;
-    final newOff = _day(c.switchOffDate).add(Duration(days: days));
+    final newOff = _offBeforePause(c).add(Duration(days: days));
     Widget row(String a, String b) => Padding(
           padding: const EdgeInsets.symmetric(vertical: 9),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -535,7 +547,6 @@ class _ReviewScreen extends StatelessWidget {
                   child: Column(children: [
                     row('Connection', '${c.label} · ${c.vcPretty}'),
                     row('Pack', '${c.planName} · paused'),
-                    row('Switch-off date', '${_short(c.switchOffDate)} → ${_short(newOff)}'),
                   ]),
                 ),
                 const SizedBox(height: S.lg),
@@ -543,26 +554,26 @@ class _ReviewScreen extends StatelessWidget {
                   Icon(Icons.info_outline, size: 16, color: C.muted),
                   const SizedBox(width: S.sm),
                   Expanded(
-                    child: Text('Channels stop on ${_short(from)}. Back sooner? End the vacation early from Pause Connection.',
+                    child: Text('Channels stop on ${_short(from)}. Back sooner? End the vacation early from Vacation Mode.',
                         style: T.caption.copyWith(fontSize: 12.5, color: C.muted)),
                   ),
                 ]),
               ],
             ),
           ),
-          // What comes back, and the button.
+          // The new switch-off date, and the button.
           Container(
             decoration: BoxDecoration(color: C.surface, border: Border(top: BorderSide(color: C.line))),
             padding: EdgeInsets.fromLTRB(S.page, S.lg, S.page, S.md + MediaQuery.paddingOf(context).bottom),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text('CREDIT ON RESUME', style: T.overline),
+              Text('YOUR SWITCH-OFF DATE', style: T.overline),
               const SizedBox(height: S.sm),
-              money('Pause duration', '$days days'),
-              money('Monthly recharge', rupees(c.monthlyRecharge)),
+              money('Switch-off date now', _date(_offBeforePause(c))),
+              money('Days paused', '+ $days days'),
               Container(height: 1, margin: const EdgeInsets.symmetric(vertical: S.sm), color: C.line),
               Row(children: [
-                Expanded(child: Text('Credit', style: T.item.copyWith(fontSize: 16, fontWeight: FontWeight.w700))),
-                Text(rupees(_credit(c, days)), style: T.price.copyWith(fontSize: 24, color: C.success)),
+                Expanded(child: Text('New switch-off date', style: T.item.copyWith(fontSize: 16, fontWeight: FontWeight.w700))),
+                Text(_date(newOff), style: T.price.copyWith(fontSize: 20, color: C.success)),
               ]),
               const SizedBox(height: S.lg),
               PrimaryButton(label: 'Activate Vacation Mode', onTap: () => _activate(context)),
@@ -630,12 +641,11 @@ class _Trip extends StatelessWidget {
 // Success
 
 class _VacationSuccess extends StatefulWidget {
-  const _VacationSuccess({required this.tv, required this.vc, required this.from, required this.resume, required this.credit, required this.newOff});
+  const _VacationSuccess({required this.tv, required this.vc, required this.from, required this.resume, required this.newOff});
   final String tv;
   final String vc;
   final DateTime from;
   final DateTime resume;
-  final double credit;
   final DateTime newOff;
 
   @override
@@ -680,6 +690,8 @@ class _VacationSuccessState extends State<_VacationSuccess> with SingleTickerPro
       },
       child: Scaffold(
         body: Stack(children: [
+          // Behind the content and clear of the status bar.
+          const Positioned.fill(child: SafeArea(child: Confetti())),
           SafeArea(
             child: Column(children: [
               Expanded(
@@ -747,8 +759,7 @@ class _VacationSuccessState extends State<_VacationSuccess> with SingleTickerPro
                         color: C.surface,
                         padding: const EdgeInsets.symmetric(horizontal: S.lg, vertical: S.sm),
                         child: Column(children: [
-                          row('Credit on resume', rupees(widget.credit), tone: C.success),
-                          row('New switch-off date', _date(widget.newOff)),
+                          row('New switch-off date', _date(widget.newOff), tone: C.success),
                           row('TV', '${widget.tv} · VC ${widget.vc}'),
                         ]),
                       ),
@@ -760,7 +771,7 @@ class _VacationSuccessState extends State<_VacationSuccess> with SingleTickerPro
                         Icon(Icons.info_outline, size: 16, color: C.muted),
                         const SizedBox(width: S.sm),
                         Expanded(
-                          child: Text('Plans changed? Change the dates or cancel from Pause Connection any time before ${_short(widget.from)}.',
+                          child: Text('Plans changed? Change the dates or cancel from Vacation Mode any time before ${_short(widget.from)}.',
                               style: T.caption.copyWith(fontSize: 12.5, color: C.muted)),
                         ),
                       ]),
@@ -771,7 +782,6 @@ class _VacationSuccessState extends State<_VacationSuccess> with SingleTickerPro
               Padding(padding: const EdgeInsets.fromLTRB(S.page, 0, S.page, S.lg), child: PrimaryButton(label: 'Done', onTap: _done)),
             ]),
           ),
-          const Positioned.fill(child: Confetti()),
         ]),
       ),
     );

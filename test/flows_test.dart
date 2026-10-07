@@ -115,8 +115,9 @@ void main() {
         await _tap(t, find.byTooltip('Menu'));
         await _see(t, find.text('My account'));
         await _see(t, find.text('Regulatory Information'));
-        await _find(t, find.text('My Existing Pack'));
-        await _tap(t, find.text('My Existing Pack'));
+        final menuPack = find.descendant(of: find.byType(Drawer), matching: find.text('My Pack'));
+        await _find(t, menuPack);
+        await _tap(t, menuPack);
         expect(find.text('Your plan'), findsOneWidget);
         await _back(t);
 
@@ -297,8 +298,11 @@ void main() {
         await _tap(t, find.text('Sports'));
         await _tap(t, find.text('Movies'));
         await _tap(t, find.text('Next'));
+        // A one-answer question moves on by itself.
         await _tap(t, find.text('TV and mobile'));
-        await _tap(t, find.text('Next'));
+        await t.pump(const Duration(milliseconds: 400));
+        await t.pumpAndSettle();
+        expect(find.text('Which picture quality?'), findsOneWidget);
         await _tap(t, find.text('Next'));
         await _tap(t, find.text('Up to ₹500'));
         await _tap(t, find.text('Show my packs'));
@@ -314,4 +318,65 @@ void main() {
       });
     }
   }
+
+  testWidgets('leaving a plan change asks first, and discarding clears it', (t) async {
+    await _screen(t, const Size(390, 844), 1.0);
+    await _start(t);
+    await _tap(t, find.text('Add/Remove Channel'));
+    await _see(t, find.text('Trending near you'));
+    await _tap(t, find.bySemanticsLabel(RegExp(r'^Colors HD, ')));
+    await _back(t);
+    expect(find.text('Discard your changes?'), findsOneWidget);
+    await _tap(t, find.text('Keep editing'));
+    expect(find.text('Add / Remove'), findsOneWidget);
+    await _back(t);
+    await _tap(t, find.text('Discard changes'));
+    expect(find.text('TV on the go'), findsOneWidget, reason: 'back on Home');
+
+    // The discarded channel doesn't turn up in another flow.
+    await _tap(t, find.text('OTT'));
+    expect(find.text('Add OTT'), findsOneWidget);
+    expect(find.text('Review'), findsNothing);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('changing the number verifies both numbers, and a wrong OTP says so', (t) async {
+    await _screen(t, const Size(390, 844), 1.0);
+    await _start(t);
+    await _tap(t, find.text('Account & Support'));
+    await _tap(t, find.textContaining('More in '));
+    await _tap(t, find.text('Update Mobile No.'));
+    // The current number is verified first.
+    await _tap(t, find.text('Change number'));
+    expect(find.text('Verify your current number'), findsOneWidget);
+    await t.enterText(find.byType(TextField).last, '123456');
+    await t.pumpAndSettle();
+    await _tap(t, find.text('Verify'));
+    await t.pump(const Duration(seconds: 2));
+    await t.pumpAndSettle();
+    expect(find.text('NEW MOBILE NUMBER'), findsOneWidget);
+    await t.enterText(find.byType(TextField).last, '9123456789');
+    await t.pumpAndSettle();
+    await _tap(t, find.text('Send OTP'));
+    await t.enterText(find.byType(TextField).last, '000000');
+    await t.pumpAndSettle();
+    await _tap(t, find.text('Verify & Update'));
+    await t.pump(const Duration(seconds: 2));
+    await t.pumpAndSettle();
+    expect(find.textContaining("That OTP isn't right"), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('a bundle replaces an app you already pay for', (t) async {
+    await _screen(t, const Size(390, 844), 1.0);
+    await _start(t);
+    // My TV has ZEE5 Premium; the Entertainment Bundle includes ZEE5.
+    await _tap(t, find.text('OTT'));
+    await _tap(t, find.bySemanticsLabel(RegExp(r'^Add Entertainment Bundle')));
+    await _tap(t, find.text('Review'));
+    await _see(t, find.text('YOUR NEW MONTHLY BILL'));
+    await _see(t, find.textContaining(RegExp('removing', caseSensitive: false)));
+    await _see(t, find.text('Zee5 Premium'));
+    expect(t.takeException(), isNull);
+  });
 }

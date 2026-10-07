@@ -2,6 +2,8 @@
 // fresh on mock data. Swap [MockRepository] for a live implementation of
 // [Repository] to connect the real APIs.
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -35,12 +37,12 @@ class DishTvNext extends StatelessWidget {
         title: 'DishTV',
         debugShowCheckedModeBanner: false,
         theme: buildTheme(),
-        // Sleek type: every text in the app at 90% of its set size (on top
-        // of the user's own text-size setting).
+        // Sleek type: text at 90% of its set size, on top of the user's own
+        // text size, but never under 11 pt (scaled the same way).
         builder: (context, child) {
           final mq = MediaQuery.of(context);
           return MediaQuery(
-            data: mq.copyWith(textScaler: TextScaler.linear(mq.textScaler.scale(14) / 14 * 0.9)),
+            data: mq.copyWith(textScaler: SleekTextScaler(mq.textScaler)),
             // Cross-fades the whole app when light/dark is switched.
             child: ThemeFade(child: _Responsive(child: child!)),
           );
@@ -85,4 +87,31 @@ class _Responsive extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 90% of the user's text size, with an 11 pt floor (Apple's smallest
+/// legible size), applied per font size so iOS's own non-linear Dynamic
+/// Type curve is kept.
+@immutable
+class SleekTextScaler extends TextScaler {
+  const SleekTextScaler(this.user);
+
+  /// The device's text size setting.
+  final TextScaler user;
+
+  static const _shrink = 0.9;
+  static const _floor = 11.0;
+
+  @override
+  double scale(double fontSize) => math.max(user.scale(fontSize) * _shrink, user.scale(math.min(fontSize, _floor)));
+
+  @override
+  // ignore: deprecated_member_use
+  double get textScaleFactor => user.textScaleFactor * _shrink;
+
+  @override
+  bool operator ==(Object other) => other is SleekTextScaler && other.user == user;
+
+  @override
+  int get hashCode => user.hashCode;
 }

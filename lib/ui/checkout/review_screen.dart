@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../app/theme.dart';
 import '../../data/models.dart';
+import '../../state/app_store.dart';
 import '../../state/plan_store.dart';
 import '../widgets/widgets.dart';
 import 'success_screen.dart';
@@ -32,6 +33,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
     final ok = await p.apply();
     if (!mounted) return;
     if (ok) {
+      // Home shows the new pack and monthly amount straight away.
+      context.read<AppStore>().refresh();
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const SuccessScreen()),
         (r) => r.isFirst,

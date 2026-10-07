@@ -9,6 +9,10 @@ import 'models.dart';
 abstract class Repository {
   Future<Subscriber> subscriber();
   Future<List<Connection>> connections();
+
+  /// Stores a connection after a change made on it (recharge, Pay Later,
+  /// Vacation Mode), so the next [connections] call returns it.
+  Future<void> saveConnection(Connection c);
   Future<Warranty> warranty(String vc);
   Future<Subscriber> updateSubscriber(Subscriber s);
   Future<List<PlanItem>> planItems(String vc);
@@ -17,7 +21,13 @@ abstract class Repository {
   Future<List<Channel>> itemChannels(PlanItem item);
   Future<List<PlanItem>> catalog(ItemKind kind);
   Future<Quote> quote({required List<PlanItem> finalItems});
-  Future<String> apply({required List<PlanItem> finalItems});
+
+  /// Makes [finalItems] the plan on [vc]; its pack name and monthly recharge
+  /// follow. Returns the order ID.
+  Future<String> apply({required String vc, required List<PlanItem> finalItems});
+
+  /// The HD add-on offered to [vc] by Upgrade to HD.
+  Future<PlanItem> hdUpgrade(String vc);
 
   // AI recommender.
   Future<AiOptions> aiOptions();
@@ -88,75 +98,112 @@ class MockRepository implements Repository {
         ]);
       });
 
-  @override
-  Future<List<Connection>> connections() => _later(() => [
-        Connection(
-          vc: '01514457750',
-          label: 'My TV',
-          type: ConnectionType.parent,
-          status: ConnectionStatus.active,
-          monthlyRecharge: 1125, // = quote of its current items (packs + NCF + GST)
-          balance: 113.27,
-          switchOffDate: _now.add(const Duration(days: 4)),
-          lockInUntil: _now.add(const Duration(days: 27)),
-          planName: 'My Home Pack New NCF',
-          isHd: true,
-        ),
-        Connection(
-          vc: '01027734590',
-          label: 'Living Room',
-          type: ConnectionType.child,
-          status: ConnectionStatus.vacation,
-          monthlyRecharge: 329,
-          balance: 18,
-          switchOffDate: _now.add(const Duration(days: 17)),
-          planName: 'Super Family Hindi',
-          isHd: false,
-        ),
-        Connection(
-          vc: '01027734601',
-          label: 'Bedroom',
-          type: ConnectionType.child,
-          status: ConnectionStatus.deactivated,
-          monthlyRecharge: 249,
-          balance: 0,
-          switchOffDate: _now.subtract(const Duration(days: 9)),
-          planName: 'Hindi Family Saver',
-          isHd: false,
-        ),
-      ]);
+  // The account is kept here, so changes made in the app (a recharge, a new
+  // pack, a booked vacation) are still there after a refresh.
+
+  static const _myTv = '01514457750';
+  static const _livingRoom = '01027734590';
+  static const _bedroom = '01027734601';
+
+  /// Each TV's plan. A TV's monthly recharge is always the quote of its plan.
+  late final Map<String, List<PlanItem>> _plans = {
+    _myTv: _withLogos([
+      const PlanItem(
+          id: 9001, name: 'My Home Pack New NCF', kind: ItemKind.basePack, price: 579, channels: 249, hdChannels: 32, isHd: true, language: 'Hindi'),
+      const PlanItem(id: 3101, name: 'Star Sports 1 Hindi', kind: ItemKind.alaCarte, price: 22.42, broadcaster: 'Disney Star', language: 'Hindi'),
+      const PlanItem(
+          id: 3102, name: 'Sony Ten 3 HD', kind: ItemKind.alaCarte, price: 20.06, broadcaster: 'Sony', language: 'Hindi', isHd: true, hdChannels: 1),
+      const PlanItem(
+          id: 3103,
+          name: 'Colors Cineplex',
+          kind: ItemKind.alaCarte,
+          price: 11.80,
+          broadcaster: 'Viacom18',
+          language: 'Hindi',
+          lockedReason: 'Lock-in until next month'),
+      const PlanItem(
+          id: 4101, name: 'Star Value Pack Hindi', kind: ItemKind.bouquet, price: 57.82, channels: 18, broadcaster: 'Disney Star', language: 'Hindi'),
+      const PlanItem(id: 5102, name: 'Kids Add-on', kind: ItemKind.addOn, price: 34.22, channels: 6, broadcaster: 'DishTV'),
+      const PlanItem(
+          id: 5103,
+          name: 'Watcho Exclusive',
+          kind: ItemKind.addOn,
+          group: 'OTT',
+          price: 49,
+          channels: 0,
+          broadcaster: 'DishTV',
+          logoUrl: '${_ottBase}watcho-exclusives.webp'),
+      const PlanItem(
+          id: 5104, name: 'Zee5 Premium', kind: ItemKind.addOn, group: 'OTT', price: 49, channels: 0, broadcaster: 'Zee', logoUrl: '${_ottBase}zee5.webp'),
+      const PlanItem(id: 5101, name: 'Recording (1 month)', kind: ItemKind.addOn, group: 'Active Services', price: 29.50, channels: 0, broadcaster: 'DishTV'),
+    ]),
+    _livingRoom: _withLogos([
+      _packItem(6103), // Super Family Hindi
+      const PlanItem(id: 3212, name: 'Sony Max', kind: ItemKind.alaCarte, genre: 'Movies', price: 15.34, broadcaster: 'Sony', language: 'Hindi'),
+      const PlanItem(id: 5102, name: 'Kids Add-on', kind: ItemKind.addOn, price: 34.22, channels: 6, broadcaster: 'DishTV'),
+    ]),
+    _bedroom: _withLogos([
+      _packItem(6102), // Hindi Family Saver
+      const PlanItem(id: 3217, name: 'Aastha Bhajan', kind: ItemKind.alaCarte, genre: 'Devotional', price: 1.18, broadcaster: 'Aastha', language: 'Hindi'),
+    ]),
+  };
+
+  PlanItem _packItem(int id) => _allPacks().firstWhere((p) => p.id == id).asItem();
+
+  double _monthly(String vc) => _price(_plans[vc] ?? const []).total;
+
+  late final List<Connection> _connections = [
+    Connection(
+      vc: _myTv,
+      label: 'My TV',
+      type: ConnectionType.parent,
+      status: ConnectionStatus.active,
+      monthlyRecharge: _monthly(_myTv), // ₹1,125
+      balance: 113.27,
+      switchOffDate: _now.add(const Duration(days: 4)),
+      lockInUntil: _now.add(const Duration(days: 27)),
+      planName: 'My Home Pack New NCF',
+      isHd: true,
+    ),
+    Connection(
+      vc: _livingRoom,
+      label: 'Living Room',
+      type: ConnectionType.child,
+      status: ConnectionStatus.vacation,
+      monthlyRecharge: _monthly(_livingRoom),
+      balance: 18,
+      switchOffDate: _now.add(const Duration(days: 17)),
+      planName: 'Super Family Hindi',
+      isHd: false,
+      pauseFrom: _now.subtract(const Duration(days: 5)),
+      resumeOn: _now.add(const Duration(days: 9)),
+    ),
+    Connection(
+      vc: _bedroom,
+      label: 'Bedroom',
+      type: ConnectionType.child,
+      status: ConnectionStatus.deactivated,
+      monthlyRecharge: _monthly(_bedroom),
+      balance: 0,
+      switchOffDate: _now.subtract(const Duration(days: 9)),
+      planName: 'Hindi Family Saver',
+      isHd: false,
+    ),
+  ];
 
   @override
-  Future<List<PlanItem>> planItems(String vc) => _later(() => _withLogos([
-        const PlanItem(
-            id: 9001, name: 'My Home Pack New NCF', kind: ItemKind.basePack, price: 579, channels: 249, hdChannels: 32, isHd: true, language: 'Hindi'),
-        const PlanItem(id: 3101, name: 'Star Sports 1 Hindi', kind: ItemKind.alaCarte, price: 22.42, broadcaster: 'Disney Star', language: 'Hindi'),
-        const PlanItem(
-            id: 3102, name: 'Sony Ten 3 HD', kind: ItemKind.alaCarte, price: 20.06, broadcaster: 'Sony', language: 'Hindi', isHd: true, hdChannels: 1),
-        const PlanItem(
-            id: 3103,
-            name: 'Colors Cineplex',
-            kind: ItemKind.alaCarte,
-            price: 11.80,
-            broadcaster: 'Viacom18',
-            language: 'Hindi',
-            lockedReason: 'Lock-in until next month'),
-        const PlanItem(
-            id: 4101, name: 'Star Value Pack Hindi', kind: ItemKind.bouquet, price: 57.82, channels: 18, broadcaster: 'Disney Star', language: 'Hindi'),
-        const PlanItem(id: 5102, name: 'Kids Add-on', kind: ItemKind.addOn, price: 34.22, channels: 6, broadcaster: 'DishTV'),
-        const PlanItem(
-            id: 5103,
-            name: 'Watcho Exclusive',
-            kind: ItemKind.addOn,
-            group: 'OTT',
-            price: 49,
-            channels: 0,
-            broadcaster: 'DishTV',
-            logoUrl: '${_ottBase}watcho-exclusives.webp'),
-        const PlanItem(
-            id: 5104, name: 'Zee5 Premium', kind: ItemKind.addOn, group: 'OTT', price: 49, channels: 0, broadcaster: 'Zee', logoUrl: '${_ottBase}zee5.webp'),
-        const PlanItem(id: 5101, name: 'Recording (1 month)', kind: ItemKind.addOn, group: 'Active Services', price: 29.50, channels: 0, broadcaster: 'DishTV'),
-      ]));
+  Future<List<Connection>> connections() => _later(() => List.of(_connections));
+
+  @override
+  Future<void> saveConnection(Connection c) {
+    // Stored right away, so a refresh that starts now already sees it.
+    final i = _connections.indexWhere((x) => x.vc == c.vc);
+    if (i >= 0) _connections[i] = c;
+    return _later(() {});
+  }
+
+  @override
+  Future<List<PlanItem>> planItems(String vc) => _later(() => List.of(_plans[vc] ?? const []));
 
   // ------------------------------------------------------------------ packs
 
@@ -242,10 +289,12 @@ class MockRepository implements Repository {
     ),
   ];
 
-  Pack _pack(int id, String name, double price, List<String> langs, Map<String, int> genres, double ncf, {List<String> ott = const [], required bool hd}) {
+  Pack _pack(int id, String name, double price, List<String> langs, Map<String, int> genres, double ncf,
+      {List<String> ott = const [], required bool hd, int? currentId}) {
     final total = genres.values.fold(0, (a, b) => a + b);
+    final packId = hd ? id + 500 : id;
     return Pack(
-      id: hd ? id + 500 : id,
+      id: packId,
       name: hd ? '$name HD' : name,
       type: ott.isEmpty ? PackType.tv : PackType.ottTv,
       isHd: hd,
@@ -260,6 +309,7 @@ class MockRepository implements Repository {
       },
       ncf: ncf,
       genreCounts: genres,
+      isCurrent: packId == currentId,
       lockIn: id == 6104,
       ruleMessage: id == 6106 ? 'Add at least one Marathi regional channel with this pack.' : null,
     );
@@ -273,15 +323,19 @@ class MockRepository implements Repository {
     'JioHotstar': '${_ottBase}jiohotstar.webp',
   };
 
-  List<Pack> _allPacks() => [
+  /// Every pack; [currentId] marks the one a TV is on now.
+  List<Pack> _allPacks({int? currentId}) => [
         for (final hd in const [false, true]) ...[
-          for (final s in _tvSpecs) _pack(s.$1, s.$2, s.$3, s.$4, s.$5, s.$6, hd: hd),
-          for (final s in _ottSpecs) _pack(s.$1, s.$2, s.$3, s.$4, s.$5, s.$6, ott: s.$7, hd: hd),
+          for (final s in _tvSpecs) _pack(s.$1, s.$2, s.$3, s.$4, s.$5, s.$6, hd: hd, currentId: currentId),
+          for (final s in _ottSpecs) _pack(s.$1, s.$2, s.$3, s.$4, s.$5, s.$6, ott: s.$7, hd: hd, currentId: currentId),
         ],
       ];
 
   @override
-  Future<List<Pack>> packs(String vc) => _later(_allPacks);
+  Future<List<Pack>> packs(String vc) => _later(() {
+        final base = _plans[vc]?.where((i) => i.kind == ItemKind.basePack).firstOrNull;
+        return _allPacks(currentId: base?.id);
+      });
 
   static const _pool = {
     'Entertainment': [
@@ -545,6 +599,7 @@ class MockRepository implements Repository {
   static const _logoSlugs = {
     'National Geographic': 'national-geographic-channel',
     'Sony TV': 'sony-entertainment-television',
+    'Zee TV': 'zeetv', // zee-tv.webp is a near-black poster, not a logo
     'Sports18': 'sports18-1',
   };
 
@@ -638,17 +693,37 @@ class MockRepository implements Repository {
     return out;
   }
 
+  /// A pack's channels, its own languages first (a Hindi pack opens on
+  /// Hindi channels, not regional ones), otherwise in genre order.
+  List<Channel> _packChannels(Pack pack) {
+    final all = _channelsFor(pack.genreCounts, hd: pack.isHd, language: pack.languages.first, seed: pack.id % 500);
+    final own = all.where((c) => pack.languages.contains(c.language));
+    return [...own, ...all.where((c) => !pack.languages.contains(c.language))];
+  }
+
   @override
-  Future<List<Channel>> packChannels(Pack pack) =>
-      _later(() => _channelsFor(pack.genreCounts, hd: pack.isHd, language: pack.languages.first, seed: pack.id % 500));
+  Future<List<Channel>> packChannels(Pack pack) => _later(() => _packChannels(pack));
+
+  /// Channels in My Home Pack New NCF, by genre (249 in all).
+  static const _myHomePackGenres = {
+    'Entertainment': 70,
+    'Movies': 40,
+    'News': 46,
+    'Kids': 19,
+    'Music': 22,
+    'Sports': 18,
+    'Infotainment': 16,
+    'Devotional': 18,
+  };
 
   @override
   Future<List<Channel>> itemChannels(PlanItem item) => _later(() {
         if (item.kind == ItemKind.basePack) {
-          return _channelsFor(
-            const {'Entertainment': 48, 'Movies': 30, 'News': 44, 'Kids': 14, 'Music': 14, 'Sports': 9, 'Infotainment': 12, 'Devotional': 14},
-            hd: item.isHd,
-          );
+          // A catalog pack lists the same channels here as in Explore, so
+          // "you keep / you lose" adds up.
+          final pack = _allPacks().where((p) => p.id == item.id).firstOrNull;
+          if (pack != null) return _packChannels(pack);
+          return _channelsFor(_myHomePackGenres, hd: item.isHd);
         }
         if (item.kind == ItemKind.bouquet) {
           return _channelsFor(const {'Entertainment': 6, 'Movies': 5, 'Sports': 4, 'Kids': 3}, hd: false);
@@ -849,20 +924,52 @@ class MockRepository implements Repository {
     return 130 + (extra / 25).ceil() * 20;
   }
 
-  @override
-  Future<Quote> quote({required List<PlanItem> finalItems}) => _later(() {
-        final packCost = finalItems.fold(0.0, (a, i) => a + i.priceExTax);
-        final sdEq = finalItems.fold(0, (a, i) => a + (i.channels - i.hdChannels) + i.hdChannels * 2);
-        final ncf = ncfFor(sdEq);
-        final gst = (packCost + ncf) * 0.18;
-        return Quote(packCost: packCost, ncf: ncf, gst: gst);
-      });
+  static Quote _price(List<PlanItem> items) {
+    final packCost = items.fold(0.0, (a, i) => a + i.priceExTax);
+    final sdEq = items.fold(0, (a, i) => a + (i.channels - i.hdChannels) + i.hdChannels * 2);
+    final ncf = ncfFor(sdEq);
+    final gst = (packCost + ncf) * 0.18;
+    return Quote(packCost: packCost, ncf: ncf, gst: gst);
+  }
 
   @override
-  Future<String> apply({required List<PlanItem> finalItems}) => _later(() {
-        final n = DateTime.now().millisecondsSinceEpoch % 100000000;
-        return 'DT${n.toString().padLeft(8, '0')}';
-      });
+  Future<Quote> quote({required List<PlanItem> finalItems}) => _later(() => _price(finalItems));
+
+  @override
+  Future<String> apply({required String vc, required List<PlanItem> finalItems}) {
+    // Stored right away, so a refresh that starts now already sees it.
+    final i = _connections.indexWhere((x) => x.vc == vc);
+    if (i >= 0) {
+      final items = _withLogos(finalItems);
+      final base = items.firstWhere((x) => x.kind == ItemKind.basePack);
+      _plans[vc] = items;
+      _connections[i] = _connections[i].copyWith(
+        planName: base.name,
+        monthlyRecharge: _price(items).total,
+        isHd: base.isHd || items.any((x) => x.id == _hdPack.id),
+      );
+    }
+    return _later(() {
+      final n = DateTime.now().millisecondsSinceEpoch % 100000000;
+      return 'DT${n.toString().padLeft(8, '0')}';
+    });
+  }
+
+  /// Upgrade to HD: 14 HD channels that replace their SD versions.
+  static const _hdPack = PlanItem(
+    id: 5301,
+    name: 'Family HD Pack',
+    kind: ItemKind.addOn,
+    price: 59,
+    channels: 14,
+    hdChannels: 14,
+    isHd: true,
+    broadcaster: 'DishTV',
+    language: 'Hindi',
+  );
+
+  @override
+  Future<PlanItem> hdUpgrade(String vc) => _later(() => _hdPack);
 
   // ---------------------------------------------------------------------- AI
 
@@ -871,7 +978,7 @@ class MockRepository implements Repository {
         languages: ['Hindi', 'English', 'Marathi', 'Bangla', 'Tamil', 'Telugu', 'Kannada', 'Malayalam', 'Gujarati', 'Punjabi'],
         genres: ['Entertainment', 'Movies', 'Sports', 'News', 'Kids', 'Music', 'Infotainment', 'Devotional'],
         viewing: ['Mostly on the TV', 'TV and mobile', 'Mostly on mobile'],
-        budgets: [250, 350, 500, 750],
+        budgets: [250, 350, 500, 750, 1000],
       ));
 
   @override
@@ -881,6 +988,9 @@ class MockRepository implements Repository {
         int score(Pack p) {
           var s = 50;
           s += p.languages.where(a.languages.contains).length * 12;
+          // A regional pack whose main language you didn't pick is a poor fit,
+          // even if it also carries Hindi.
+          if (a.languages.isNotEmpty && !a.languages.contains(p.languages.first)) s -= 15;
           for (final g in a.genres) {
             s += min(10, (p.genreCounts[g] ?? 0) ~/ 2);
           }
@@ -890,20 +1000,45 @@ class MockRepository implements Repository {
         }
 
         final ranked = pool.toList()..sort((x, y) => score(y).compareTo(score(x)));
-        final best = ranked.first;
-        final popular = ranked.firstWhere((p) => p != best && p.channels >= best.channels - 20, orElse: () => ranked[1]);
-        final budget = (ranked.where((p) => p != best && p != popular).toList()..sort((x, y) => x.price.compareTo(y.price))).first;
-        List<String> why(Pack p) => [
-              if (p.languages.any(a.languages.contains)) 'Has your languages: ${p.languages.where(a.languages.contains).join(' | ')}',
-              for (final g in a.genres.take(2))
-                if ((p.genreCounts[g] ?? 0) > 0) '${p.genreCounts[g]} $g channels',
-              if (p.ottApps.isNotEmpty) 'Includes ${p.ottApps.join(' & ')}',
-              if (a.budget != null && p.price <= a.budget!) 'Within your ${'₹'}${a.budget} budget',
-            ];
+        // Picks come from packs in a language you chose and within your
+        // budget, best first; only if there aren't three of those does it
+        // look over budget, then further.
+        bool speaks(Pack p) => a.languages.isEmpty || a.languages.contains(p.languages.first);
+        bool fits(Pack p) => a.budget == null || p.price <= a.budget!;
+        final pickFrom = [
+          ...ranked.where((p) => speaks(p) && fits(p)),
+          ...ranked.where((p) => speaks(p) && !fits(p)),
+          ...ranked.where((p) => !speaks(p)),
+        ];
+        final best = pickFrom.first;
+        final others = pickFrom.skip(1).toList();
+        final popular = others.firstWhere((p) => fits(p) && p.channels >= best.channels - 20,
+            orElse: () => others.firstWhere(fits, orElse: () => others.first));
+        // The budget pick has to cost less than both of the others, and still
+        // fit reasonably well. If nothing does, the third is just another fit.
+        final rest = pickFrom.where((p) => p != best && p != popular).toList();
+        final cheaper = (rest.where((p) => p.price < min(best.price, popular.price) && score(p) >= score(best) - 25).toList()
+          ..sort((x, y) => x.price.compareTo(y.price)));
+        final third = cheaper.isNotEmpty ? cheaper.first : rest.first;
+        List<String> why(Pack p) {
+          final langs = p.languages.where(a.languages.contains).toList();
+          final genres = [
+            for (final g in a.genres)
+              if ((p.genreCounts[g] ?? 0) > 0) '${p.genreCounts[g]} $g',
+          ];
+          return [
+            if (genres.isNotEmpty) '${genres.join(', ')} channels',
+            if (langs.isNotEmpty) 'In ${langs.join(' and ')}',
+            if (p.ottApps.isNotEmpty) 'Includes ${p.ottApps.join(' & ')}',
+            if (a.budget != null && p.price <= a.budget!) 'Within your ${'₹'}${a.budget} budget',
+            if (a.budget != null && p.price > a.budget!) '${'₹'}${(p.price - a.budget!).round()} over your ${'₹'}${a.budget} budget',
+          ];
+        }
+
         return [
           Recommendation(pack: best, label: 'Best match', matchScore: score(best), reasons: why(best)),
           Recommendation(pack: popular, label: 'Most popular', matchScore: score(popular), reasons: why(popular)),
-          Recommendation(pack: budget, label: 'Budget pick', matchScore: score(budget), reasons: why(budget)),
+          Recommendation(pack: third, label: cheaper.isNotEmpty ? 'Budget pick' : 'Also a good fit', matchScore: score(third), reasons: why(third)),
         ];
       });
 }

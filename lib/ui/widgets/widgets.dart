@@ -341,7 +341,9 @@ class Pick extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+          // Without an icon, the tick's room (16 + 6) is padding when off, so a
+          // chip is the same width on and off and the row never reflows.
+          padding: EdgeInsets.symmetric(horizontal: selected || icon != null ? 14 : 25, vertical: 9),
           // A quiet surface when off; the card orange when on. No outline.
           decoration: BoxDecoration(
             color: selected ? null : C.surface,

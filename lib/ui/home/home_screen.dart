@@ -14,29 +14,20 @@ import '../../app/theme_switch.dart';
 import '../../data/models.dart';
 import '../../state/app_store.dart';
 import '../../state/plan_store.dart';
-import '../change_pack/change_pack_screen.dart';
 import '../change_pack/plan_screen.dart';
 import '../add_remove/add_remove_screen.dart';
 import '../widgets/showtime.dart';
 import '../widgets/widgets.dart';
 import '../hd/upgrade_hd_screens.dart';
 import '../ott/add_ott_screen.dart';
-import '../recharge/autopay_screen.dart';
-import '../recharge/friends_family_screen.dart';
-import '../recharge/pay_later_screen.dart';
 import '../recharge/recharge_screen.dart';
-import '../vacation/vacation_mode_screen.dart';
-import 'account_statement_screen.dart';
-import 'bills_queries_screen.dart';
+import 'services.dart';
 import 'all_services_screen.dart';
 import 'app_drawer.dart';
 import 'connection_card.dart';
 import 'language_screen.dart';
 import 'profile_screen.dart';
-import 'restore_signal_screen.dart';
-import 'tv_error_screen.dart';
 import 'support_screen.dart';
-import 'update_mobile_screen.dart';
 
 void comingSoon(BuildContext context, String what) {
   ScaffoldMessenger.of(context)
@@ -113,11 +104,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final s = context.watch<AppStore>();
     final plan = context.watch<PlanStore>();
     // Keep the loaded plan on the selected TV (it can change from other
-    // screens too) so the channel strip shows that TV's channels.
+    // screens too) so the channel strip shows that TV's channels, and on
+    // its latest details (a recharge or new pack changes them).
     final sel = s.connection;
-    if (sel != null && plan.connection?.vc != sel.vc) {
+    if (sel != null && !identical(plan.connection, sel)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && plan.connection?.vc != sel.vc) plan.open(sel);
+        if (mounted && !identical(plan.connection, sel)) plan.open(sel);
       });
     }
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -147,6 +139,15 @@ class _HomeScreenState extends State<HomeScreen> {
                               : const SizedBox(width: double.infinity)),
                       if (s.loading && s.connections.isEmpty)
                         const Skeleton(height: 240)
+                      else if (s.failed && s.connections.isEmpty)
+                        // Nothing loaded: say so, and offer another go.
+                        EmptyNote(
+                          icon: Icons.cloud_off_sharp,
+                          title: 'We couldn\'t load your TVs',
+                          body: 'Check your internet connection and try again.',
+                          action: 'Try again',
+                          onAction: s.load,
+                        )
                       else
                         Reveal(
                             order: 2,
@@ -155,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               _channelStrip(s, plan)
                             ])),
                       Reveal(order: 3, child: _services()),
-                      Reveal(order: 4, child: _offer()),
+                      Reveal(order: 4, child: _offer(s)),
                     ],
                   ),
                 ),
@@ -437,15 +438,21 @@ class _HomeScreenState extends State<HomeScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.baseline,
                                 textBaseline: TextBaseline.alphabetic,
                                 children: [
-                                  Text('On ${c.label}',
-                                      style: T.section.copyWith(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700)),
-                                  const SizedBox(width: 8),
+                                  // One run of text, so with large type the
+                                  // count wraps under the name by words.
                                   Expanded(
-                                      child: Text('${base.channels} channels',
+                                    child: Text.rich(TextSpan(children: [
+                                      TextSpan(
+                                          text: 'On ${c.label}  ',
+                                          style: T.section.copyWith(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w700)),
+                                      TextSpan(
+                                          text: '${base.channels} channels',
                                           style: T.caption.copyWith(
-                                              fontSize: 12, color: C.faint))),
+                                              fontSize: 12, color: C.faint)),
+                                    ])),
+                                  ),
                                   // Text and arrow as one inline run, so they
                                   // share the heading's baseline.
                                   Text.rich(TextSpan(children: [
@@ -478,16 +485,16 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Greeting, name, and one quiet line on what needs attention: the first
-  /// live TV running out within five days (with "Recharge to keep watching"
-  /// as the tappable part), or that everything is fine.
+  /// Greeting, name, and one quiet line on what needs attention most: a TV
+  /// that has already stopped, else the first live TV running out within
+  /// five days (the action is the tappable part), or that all is fine.
   Widget _greetingBlock(AppStore s) {
     final now = DateTime.now();
-    final urgent = s.connections
-        .where(
-            (c) => c.status == ConnectionStatus.active && c.daysLeft(now) <= 5)
-        .toList()
-      ..sort((a, b) => a.daysLeft(now).compareTo(b.daysLeft(now)));
+    final stopped = s.connections.where((c) => c.status == ConnectionStatus.deactivated).toList();
+    final urgent = stopped.isNotEmpty
+        ? stopped
+        : (s.connections.where((c) => c.status == ConnectionStatus.active && c.daysLeft(now) <= 5).toList()
+          ..sort((a, b) => a.daysLeft(now).compareTo(b.daysLeft(now))));
     final n = s.connections.length;
     final quiet = T.caption.copyWith(fontSize: 12.5, color: C.muted);
     Widget line;
@@ -495,10 +502,11 @@ class _HomeScreenState extends State<HomeScreen> {
       final d = urgent.first.daysLeft(now);
       line = Text.rich(TextSpan(style: quiet, children: [
         TextSpan(
-            text:
-                '${urgent.first.label} stops ${d <= 0 ? 'today' : 'in $d ${d == 1 ? 'day' : 'days'}'}.  '),
+            text: stopped.isNotEmpty
+                ? '${urgent.first.label} has stopped.  '
+                : '${urgent.first.label} stops ${d <= 0 ? 'today' : 'in $d ${d == 1 ? 'day' : 'days'}'}.  '),
         TextSpan(
-          text: 'Recharge to keep watching',
+          text: stopped.isNotEmpty ? 'Recharge to restart' : 'Recharge to keep watching',
           // Painted with the brand gradient, not a flat orange.
           style: quiet.copyWith(
             color: null,
@@ -532,116 +540,15 @@ class _HomeScreenState extends State<HomeScreen> {
   /// The services, grouped as in All services: Packs & OTT, Recharge &
   /// Offers, Account & Support. White line icons on dark tiles.
   Widget _services() {
-    void soon(String w) => comingSoon(context, w);
-    final groups = <_Tab, List<(IconData, String, VoidCallback)>>{
-      _Tab.packs: [
-        (Icons.live_tv_outlined, 'My Pack', _myPack),
-        (
-          Icons.satellite_alt_outlined,
-          'Add/Remove Channel',
-          () => _open(const AddRemoveScreen())
-        ),
-        (
-          Icons.layers_outlined,
-          'Change Pack',
-          () => _open(const ChangePackScreen())
-        ),
-        (Icons.smart_display_outlined, 'Add OTT', () => _open(const AddOttScreen())),
-        (
-          Icons.hd_outlined,
-          'Upgrade to HD',
-          () => _open(const HdCheckScreen())
-        ),
-        (Icons.list_alt_outlined, 'Channel Guide', () => soon('Channel Guide')),
-        (
-          Icons.manage_search_outlined,
-          'Channel No. Finder',
-          () => soon('Channel No. Finder')
-        ),
-      ],
-      // The first three of each list show on Home: the ones used most.
-      _Tab.recharge: [
-        (Icons.currency_rupee_outlined, 'Recharge', () => _open(const RechargeScreen())),
-        (
-          Icons.receipt_long_outlined,
-          'Account Statement',
-          () => _open(const AccountStatementScreen())
-        ),
-        (Icons.local_offer_outlined, 'Offers', () => soon('Offers')),
-        (Icons.event_repeat_outlined, 'Autopay', () => _open(const AutoPayScreen())),
-        (
-          Icons.more_time_outlined,
-          'Pay Later',
-          () => _open(const PayLaterScreen())
-        ),
-        (Icons.emoji_events_outlined, 'Loyalty', () => soon('Loyalty')),
-        (
-          Icons.luggage_outlined,
-          'Pause Connection',
-          () => _open(const VacationModeScreen())
-        ),
-        (
-          Icons.people_alt_outlined,
-          'Recharge for Friends & Family',
-          () => _open(const FriendsFamilyScreen())
-        ),
-      ],
-      _Tab.account: [
-        (
-          Icons.person_outline_sharp,
-          'My Account',
-          () => _open(const ProfileScreen())
-        ),
-        (
-          Icons.request_quote_outlined,
-          'Bills & Queries',
-          () => _open(const BillsQueriesScreen())
-        ),
-        (
-          Icons.engineering_outlined,
-          'Request Technician',
-          () => _open(const ContactSupportScreen())
-        ),
-        (
-          Icons.phonelink_ring_outlined,
-          'Update Mobile No.',
-          () => _open(const UpdateMobileScreen())
-        ),
-        (
-          Icons.troubleshoot_outlined,
-          'Troubleshoot',
-          () => soon('Troubleshoot')
-        ),
-        (
-          Icons.inventory_2_outlined,
-          'Orders & Requests',
-          () => soon('Orders & Requests')
-        ),
-        (
-          Icons.wifi_tethering_error_outlined,
-          'Signal Issue',
-          () => _open(const RestoreSignalScreen())
-        ),
-        (
-          Icons.all_inclusive_outlined,
-          'Activate Always On',
-          () => soon('Activate Always On')
-        ),
-        (
-          Icons.tv_off_outlined,
-          'Resolve on TV Error',
-          () => _open(const TvErrorScreen())
-        ),
-      ],
-    };
+    final group = serviceGroups(context, open: _open, myPack: _myPack)[_tab.index];
     // Home shows the first three of each group; the rest are one tap away.
-    final items = groups[_tab]!.take(3).toList();
+    final items = group.take(3).toList();
     const names = {
       _Tab.packs: 'Packs & OTT',
       _Tab.recharge: 'Recharge & Offers',
       _Tab.account: 'Account & Support'
     };
-    final more = groups[_tab]!.length - 3;
+    final more = group.length - 3;
     return Padding(
       padding: const EdgeInsets.fromLTRB(S.page, S.xxl + 4, S.page, 0),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -743,8 +650,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// A few offers that take turns in one card below the services.
-  Widget _offer() => Padding(
+  /// A few offers that take turns in one card below the services. Go HD
+  /// shows only for a TV that isn't on HD yet.
+  Widget _offer(AppStore s) => Padding(
         padding: const EdgeInsets.fromLTRB(S.page, S.xxl + 4, S.page, 0),
         child: _OfferCarousel(offers: [
           _Offer(
@@ -770,7 +678,8 @@ class _HomeScreenState extends State<HomeScreen> {
             action: 'Add',
             onTap: () => _open(const AddRemoveScreen()),
           ),
-          _Offer(
+          if (!(s.connection?.isHd ?? false))
+            _Offer(
             logo: SizedBox(
                 width: 42,
                 height: 42,
@@ -783,7 +692,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ]),
       );
 
-  Widget _bottomNav() {
+  /// The tab bar. Like iOS's own, its labels grow only a little with large
+  /// text (each tab is labelled for VoiceOver), so they stay one size.
+  Widget _bottomNav() => MediaQuery.withClampedTextScaling(maxScaleFactor: 1.25, child: _tabs());
+
+  Widget _tabs() {
     const items = [
       (Icons.home_sharp, 'Home'),
       (Icons.live_tv_sharp, 'TV on the go'),
@@ -1017,6 +930,8 @@ class _OfferCarouselState extends State<_OfferCarousel> {
 
   @override
   Widget build(BuildContext context) {
+    // The list can shrink (Go HD leaves once the TV is on HD).
+    if (_page >= widget.offers.length) _page = 0;
     final o = widget.offers[_page];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(children: [

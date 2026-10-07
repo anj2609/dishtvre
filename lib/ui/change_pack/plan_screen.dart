@@ -10,6 +10,7 @@ import '../../data/models.dart';
 import '../../state/plan_store.dart';
 import '../checkout/review_screen.dart';
 import '../widgets/widgets.dart';
+import '../checkout/new_bill.dart';
 
 class PlanScreen extends StatelessWidget {
   const PlanScreen({super.key, this.readOnly = false});
@@ -67,8 +68,8 @@ class PlanScreen extends StatelessWidget {
               child: Row(children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('New bill about', style: T.caption),
-                    Text('${rupees(plan.estimate)}/mo', style: T.price.copyWith(fontSize: 19)),
+                    Text('New bill', style: T.caption),
+                    NewBill(plan, style: T.price.copyWith(fontSize: 19)),
                   ]),
                 ),
                 SizedBox(

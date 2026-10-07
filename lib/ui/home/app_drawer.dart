@@ -74,7 +74,7 @@ class AppDrawer extends StatelessWidget {
     final items = <Widget>[
       _Group('My account', [
         _Item(Icons.person_outline_sharp, 'My Profile', 'Name, number, photo', () => go(const ProfileScreen())),
-        _Item(Icons.layers_outlined, 'My Existing Pack', 'See what is in your plan', myPack),
+        _Item(Icons.layers_outlined, 'My Pack', 'See what is in your plan', myPack),
         _Item(Icons.summarize_outlined, 'Account Statement', 'Recharges and deductions', () => go(const AccountStatementScreen())),
         _Item(Icons.receipt_outlined, 'My Invoices', 'Download your bills', () => go(const MyInvoicesScreen())),
       ]),
@@ -85,12 +85,13 @@ class AppDrawer extends StatelessWidget {
       ]),
       _Group('Help & settings', [
         _Item(Icons.note_add_outlined, 'Issue Tracker', 'Track your requests', () => soon('Issue Tracker')),
-        // Light or dark: the row flips it, and the switch shows which is on.
+        // Light or dark: the switch flips it; the row offers matching the
+        // iPhone's setting too.
         _Item(
           lightMode.value ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
           'Appearance',
-          lightMode.value ? 'Light theme' : 'Dark theme',
-          toggleLightMode,
+          followSystem.value ? 'Matches your iPhone' : (lightMode.value ? 'Light theme' : 'Dark theme'),
+          () => _appearance(context),
           trailing: const ThemeToggle(),
           toggled: lightMode.value,
         ),
@@ -149,7 +150,7 @@ class AppDrawer extends StatelessWidget {
         child: pin
             ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 header,
-                Expanded(child: ListView(padding: EdgeInsets.zero, children: items)),
+                Expanded(child: _MoreBelow(children: items)),
                 footer,
               ])
             : ListView(padding: EdgeInsets.zero, children: [
@@ -160,6 +161,116 @@ class AppDrawer extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Match iPhone, Light or Dark.
+Future<void> _appearance(BuildContext context) => showSheet<void>(
+      context,
+      title: 'Appearance',
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(S.page, S.sm, S.page, S.xl + MediaQuery.paddingOf(ctx).bottom),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (final (label, hint, on, pick) in [
+            ('Match iPhone', 'Light or dark, as set on your iPhone', followSystem.value, useSystemTheme),
+            ('Light', 'Always light', !followSystem.value && lightMode.value, () => setLightMode(true)),
+            ('Dark', 'Always dark', !followSystem.value && !lightMode.value, () => setLightMode(false)),
+          ])
+            Semantics(
+              button: true,
+              selected: on,
+              child: InkWell(
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  pick();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(children: [
+                    Expanded(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(label, style: T.item.copyWith(fontSize: 15.5, fontWeight: on ? FontWeight.w700 : FontWeight.w500)),
+                        Text(hint, style: T.caption.copyWith(fontSize: 12.5)),
+                      ]),
+                    ),
+                    if (on) BrandShade(child: Icon(Icons.check_sharp, color: C.brand, size: 21)),
+                  ]),
+                ),
+              ),
+            ),
+        ]),
+      ),
+    );
+
+/// The menu's scrolling middle. The scrollbar shows, and the bottom edge
+/// fades while there's more below, so it's clear the list goes on past
+/// what fits (Appearance, Language and the rest sit below the fold on
+/// most phones).
+class _MoreBelow extends StatefulWidget {
+  const _MoreBelow({required this.children});
+  final List<Widget> children;
+
+  @override
+  State<_MoreBelow> createState() => _MoreBelowState();
+}
+
+class _MoreBelowState extends State<_MoreBelow> {
+  final _scroll = ScrollController();
+  bool _more = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_check);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _check());
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _check() {
+    if (!mounted || !_scroll.hasClients) return;
+    final more = _scroll.position.extentAfter > 4;
+    if (more != _more) setState(() => _more = more);
+  }
+
+  @override
+  Widget build(BuildContext context) => NotificationListener<ScrollMetricsNotification>(
+        onNotification: (_) {
+          _check();
+          return false;
+        },
+        child: Stack(children: [
+          Scrollbar(
+            controller: _scroll,
+            thumbVisibility: true,
+            child: ListView(controller: _scroll, padding: const EdgeInsets.only(bottom: S.lg), children: widget.children),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: IgnorePointer(
+              child: AnimatedOpacity(
+                opacity: _more ? 1 : 0,
+                duration: const Duration(milliseconds: 200),
+                child: Container(
+                  height: 40,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [C.bg.withValues(alpha: 0), C.bg],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ]),
+      );
 }
 
 /// A section: a small grey heading, then its rows straight on the menu, no

@@ -1,7 +1,8 @@
 // Recharge for Friends & Family: type the mobile number linked to someone
-// else's DishTV connection, see the connection it finds, and continue to
-// the usual Recharge screen for that connection. Numbers that aren't valid,
-// are your own, or have no connection each say so and what to do instead.
+// else's DishTV connection (or its VC number or customer ID), see the
+// connection it finds, and continue to the usual Recharge screen for that
+// connection. Entries that aren't valid, are your own, or have no
+// connection each say so and what to do instead.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -52,10 +53,27 @@ class FriendsFamilyScreen extends StatefulWidget {
   State<FriendsFamilyScreen> createState() => _FriendsFamilyScreenState();
 }
 
+/// The mobile number linked to a VC or customer ID (mock: made from it).
+String _mobileFor(String id) => '9${(int.parse(id) % 1000000000).toString().padLeft(9, '0')}';
+
 class _FriendsFamilyScreenState extends State<FriendsFamilyScreen> {
   final _number = TextEditingController();
   final _focus = FocusNode();
   bool _busy = false;
+
+  /// Looking up by VC number or customer ID instead of mobile number.
+  bool _byId = false;
+
+  void _setById(bool v) {
+    if (v == _byId) return;
+    _number.clear();
+    setState(() {
+      _byId = v;
+      _error = null;
+      _ownNumber = false;
+    });
+    _focus.requestFocus();
+  }
 
   /// What went wrong with the last lookup, and an action to go with it.
   String? _error;
@@ -83,11 +101,32 @@ class _FriendsFamilyScreenState extends State<FriendsFamilyScreen> {
     super.dispose();
   }
 
-  bool get _complete => _number.text.length == 10;
+  /// A VC number is 11 digits; a customer ID 5 to 8.
+  bool get _complete => _byId ? (_number.text.length == 11 || (_number.text.length >= 5 && _number.text.length <= 8)) : _number.text.length == 10;
 
   Future<void> _find() async {
-    final m = _number.text;
-    final own = context.read<AppStore>().subscriber?.mobile;
+    final app = context.read<AppStore>();
+    final own = app.subscriber?.mobile;
+    final typed = _number.text;
+    if (_byId) {
+      if (!_complete) {
+        setState(() => _error = 'Enter an 11-digit VC number or a 5 to 8 digit customer ID.');
+        return;
+      }
+      if (app.connections.any((c) => c.vc == typed) || typed == '${app.subscriber?.smsId}') {
+        setState(() {
+          _error = 'That\'s one of your TVs.';
+          _ownNumber = true;
+        });
+        return;
+      }
+      if (typed.endsWith('0000')) {
+        HapticFeedback.heavyImpact();
+        setState(() => _error = 'No DishTV connection has this VC number or customer ID. Check it and try again.');
+        return;
+      }
+    }
+    final m = _byId ? _mobileFor(typed) : typed;
     if (!RegExp(r'^[6-9]\d{9}$').hasMatch(m)) {
       setState(() => _error = 'Enter a valid 10-digit mobile number.');
       return;
@@ -106,7 +145,20 @@ class _FriendsFamilyScreenState extends State<FriendsFamilyScreen> {
     });
     await Future.delayed(const Duration(milliseconds: 1100));
     if (!mounted) return;
-    final c = _lookup(m);
+    final found = _lookup(m);
+    // Found by VC: it's that VC.
+    final c = found == null || !_byId || typed.length != 11
+        ? found
+        : Connection(
+            vc: typed,
+            label: found.label,
+            type: found.type,
+            status: found.status,
+            monthlyRecharge: found.monthlyRecharge,
+            balance: found.balance,
+            switchOffDate: found.switchOffDate,
+            planName: found.planName,
+            isHd: found.isHd);
     setState(() => _busy = false);
     if (c == null) {
       HapticFeedback.heavyImpact();
@@ -131,10 +183,17 @@ class _FriendsFamilyScreenState extends State<FriendsFamilyScreen> {
               padding: const EdgeInsets.fromLTRB(S.page, S.sm, S.page, S.xl),
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               children: [
-                Text('Enter the mobile number of the connection you want to recharge',
-                    style: T.title.copyWith(fontSize: 21, fontWeight: FontWeight.w700, height: 1.3)),
-                const SizedBox(height: S.xl),
-                Text('Mobile number', style: T.caption.copyWith(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.inkSoft)),
+                Text('Find the connection you want to recharge', style: T.title.copyWith(fontSize: 21, fontWeight: FontWeight.w700, height: 1.3)),
+                const SizedBox(height: S.lg),
+                Segmented<bool>(
+                  height: 40,
+                  options: const [(false, 'Mobile number'), (true, 'VC or customer ID')],
+                  value: _byId,
+                  onChanged: _setById,
+                ),
+                const SizedBox(height: S.lg),
+                Text(_byId ? 'VC number or customer ID' : 'Mobile number',
+                    style: T.caption.copyWith(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.inkSoft)),
                 const SizedBox(height: S.sm),
                 // +91 | number. An orange edge while typing, red on an error.
                 AnimatedContainer(
@@ -146,24 +205,26 @@ class _FriendsFamilyScreenState extends State<FriendsFamilyScreen> {
                   ),
                   padding: const EdgeInsets.only(left: S.lg),
                   child: Row(children: [
-                    Text('+91', style: T.item.copyWith(fontSize: 16, fontWeight: FontWeight.w600, color: C.inkSoft)),
-                    Container(width: 1, height: 24, margin: const EdgeInsets.symmetric(horizontal: S.md), color: C.lineStrong),
+                    if (!_byId) ...[
+                      Text('+91', style: T.item.copyWith(fontSize: 16, fontWeight: FontWeight.w600, color: C.inkSoft)),
+                      Container(width: 1, height: 24, margin: const EdgeInsets.symmetric(horizontal: S.md), color: C.lineStrong),
+                    ],
                     Expanded(
                       child: Focus(
                         onFocusChange: (_) => setState(() {}),
                         child: TextField(
                           controller: _number,
                           focusNode: _focus,
-                          keyboardType: TextInputType.phone,
+                          keyboardType: _byId ? TextInputType.number : TextInputType.phone,
                           textInputAction: TextInputAction.search,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(10)],
+                          inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(_byId ? 11 : 10)],
                           onSubmitted: (_) => _complete ? _find() : null,
                           style: T.item.copyWith(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 0.6),
                           cursorColor: C.brand,
                           decoration: InputDecoration(
                             isCollapsed: true,
                             border: InputBorder.none,
-                            hintText: '98765 43210',
+                            hintText: _byId ? '01234567890' : '98765 43210',
                             hintStyle: T.item.copyWith(fontSize: 16, fontWeight: FontWeight.w500, color: C.faint),
                           ),
                         ),
@@ -185,8 +246,8 @@ class _FriendsFamilyScreenState extends State<FriendsFamilyScreen> {
                   duration: const Duration(milliseconds: 180),
                   layoutBuilder: (current, previous) => Stack(alignment: Alignment.centerLeft, children: [...previous, if (current != null) current]),
                   child: error == null
-                      ? Text('We\'ll find the connection linked to this number',
-                          key: const ValueKey('hint'), style: T.caption.copyWith(fontSize: 12.5, color: C.muted))
+                      ? Text(_byId ? 'The VC number is on the set-top box\'s info screen, and on bills' : 'We\'ll find the connection linked to this number',
+                          key: ValueKey('hint$_byId'), style: T.caption.copyWith(fontSize: 12.5, color: C.muted))
                       : Row(key: ValueKey(error), crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Icon(Icons.error_outline_sharp, size: 16, color: C.danger),
                           const SizedBox(width: 6),

@@ -20,6 +20,8 @@ import '../change_pack/switch_tv_sheet.dart';
 import '../checkout/review_screen.dart';
 import '../widgets/showtime.dart';
 import '../widgets/widgets.dart';
+import '../checkout/new_bill.dart';
+import '../checkout/plan_exit_guard.dart';
 
 const _logoBase = 'https://www.dishtv.in/content/dam/dishtv-aem-web-platform/mogiio/images/dishsmartottapps/';
 
@@ -166,8 +168,14 @@ class _AddOttScreenState extends State<AddOttScreen> {
   /// Picked here: the add-on for this app or bundle, in either quality.
   PlanItem? _pickedOf(PlanStore plan, int id) => plan.added.where((i) => i.id == id || i.id == id + 1000).firstOrNull;
 
-  /// On the plan already (matched by logo, as plan names differ a little).
-  bool _active(PlanStore plan, _App a) => plan.items.any((i) => i.group == 'OTT' && i.logoUrl == a.url);
+  /// On the plan already (matched by logo, as plan names differ a little),
+  /// and not being replaced by a bundle.
+  bool _active(PlanStore plan, _App a) => plan.items.any((i) => i.group == 'OTT' && i.logoUrl == a.url && !plan.isRemoved(i));
+
+  /// Apps in [b] this TV already pays for separately. A bundle replaces
+  /// them, so they aren't paid for twice.
+  List<PlanItem> _alreadyHave(PlanStore plan, _Bundle b) =>
+      plan.items.where((i) => i.group == 'OTT' && i.removable && b.apps.any((a) => a.url == i.logoUrl)).toList();
 
   _Bundle? _bundleIn(PlanStore plan) => _bundles.where((b) => _pickedOf(plan, b.id) != null).firstOrNull;
 
@@ -184,10 +192,17 @@ class _AddOttScreenState extends State<AddOttScreen> {
   void _toggleBundle(PlanStore plan, _Bundle b) {
     HapticFeedback.selectionClick();
     final current = _bundleIn(plan);
-    if (current != null) plan.undoAdd(_pickedOf(plan, current.id)!);
+    if (current != null) {
+      plan.undoAdd(_pickedOf(plan, current.id)!);
+      // Apps the old bundle replaced go back on the plan.
+      for (final i in _alreadyHave(plan, current)) {
+        if (plan.isRemoved(i)) plan.toggleRemove(i);
+      }
+    }
     if (current?.id == b.id) return;
     plan.add(_item(b.id, b.name, b.price(_hd), b.apps.first.url));
-    // Apps picked one by one that the bundle already has come off.
+    // Apps picked one by one that the bundle already has come off, and so do
+    // ones already on the plan: the bundle replaces them.
     final dropped = <String>[];
     for (final a in b.apps) {
       final p = _pickedOf(plan, a.id);
@@ -196,12 +211,16 @@ class _AddOttScreenState extends State<AddOttScreen> {
         dropped.add(a.name);
       }
     }
+    for (final i in _alreadyHave(plan, b)) {
+      if (!plan.isRemoved(i)) plan.toggleRemove(i);
+      dropped.add(i.name);
+    }
     if (dropped.isNotEmpty) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(
             content: Text(
-                '${dropped.join(', ')} ${dropped.length == 1 ? 'is' : 'are'} in the bundle, so we removed the separate ${dropped.length == 1 ? 'app' : 'apps'}.')));
+                '${dropped.join(', ')} ${dropped.length == 1 ? 'is' : 'are'} in the bundle, so ${dropped.length == 1 ? 'it comes' : 'they come'} off separately. You won\'t pay twice.')));
     }
   }
 
@@ -248,6 +267,11 @@ class _AddOttScreenState extends State<AddOttScreen> {
                     text: 'You save ${rupees(b.separately(_hd) - b.price(_hd))} every month.',
                     style: T.body.copyWith(fontSize: 13.5, fontWeight: FontWeight.w700, color: C.success)),
               ])),
+              if (_alreadyHave(plan, b).isNotEmpty) ...[
+                const SizedBox(height: S.sm),
+                Text('Replaces ${_alreadyHave(plan, b).map((i) => i.name).join(' and ')}, which you have now, so you won\'t pay for it twice.',
+                    style: T.caption.copyWith(fontSize: 12.5, color: C.muted)),
+              ],
               const SizedBox(height: S.lg),
               PrimaryButton(
                 label: picked ? 'Remove bundle' : 'Add bundle · ${rupees(b.price(_hd))}/mo',
@@ -311,7 +335,8 @@ class _AddOttScreenState extends State<AddOttScreen> {
     final bundles = _bundles.where((b) => q.isEmpty || b.name.toLowerCase().contains(q) || b.apps.any(hit)).toList();
     final picked = plan.added.where((i) => i.group == 'OTT').toList();
     final pickedCost = picked.fold(0.0, (a, i) => a + i.price);
-    return Scaffold(
+    return PlanExitGuard(
+        child: Scaffold(
       body: SafeArea(
         bottom: false,
         child: Column(children: [
@@ -476,7 +501,7 @@ class _AddOttScreenState extends State<AddOttScreen> {
                           Text('${picked.length} ${picked.length == 1 ? 'item' : 'items'}  ·  +${rupees(pickedCost)}/mo',
                               style: T.label.copyWith(fontSize: 13.5, fontWeight: FontWeight.w700)),
                           const SizedBox(height: 2),
-                          Text('New bill about ${rupees(plan.estimate)}/mo', style: T.caption.copyWith(fontSize: 12, color: C.muted)),
+                          Text(newBillLine(plan, suffix: '/mo'), style: T.caption.copyWith(fontSize: 12, color: C.muted)),
                         ]),
                       ),
                       const SizedBox(width: S.md),
@@ -492,7 +517,7 @@ class _AddOttScreenState extends State<AddOttScreen> {
           ),
         ]),
       ),
-    );
+    ));
   }
 
   Widget _sectionTitle(String title, String note) => Padding(

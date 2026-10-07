@@ -1,6 +1,8 @@
-// Light and dark. Remembers the choice between launches. When it flips,
-// every screen rebuilds with the new colours while a snapshot of the old
-// look fades out on top, so the change is a soft cross-fade, not a flash.
+// Light and dark. Until you pick one, the app matches the iPhone's own
+// setting and follows it when it changes; a pick is remembered between
+// launches. When it flips, every screen rebuilds with the new colours
+// while a snapshot of the old look fades out on top, so the change is a
+// soft cross-fade, not a flash.
 
 import 'dart:ui' as ui;
 
@@ -13,15 +15,43 @@ import 'theme.dart';
 
 const _key = 'light_mode';
 
-/// Reads the saved mode; call before the app starts.
+/// True while there's no saved pick: the app matches the iPhone's setting.
+final followSystem = ValueNotifier<bool>(true);
+
+bool get _systemLight => WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.light;
+
+/// Reads the saved mode (or the iPhone's, if none); call before the app
+/// starts.
 Future<void> loadThemeMode() async {
+  bool? saved;
   try {
     final prefs = await SharedPreferences.getInstance();
-    lightMode.value = prefs.getBool(_key) ?? false;
+    saved = prefs.getBool(_key);
   } catch (_) {
-    // No saved mode: start dark.
+    // Nothing saved: follow the system.
   }
+  followSystem.value = saved == null;
+  lightMode.value = saved ?? _systemLight;
   SystemChrome.setSystemUIOverlayStyle(systemBars);
+}
+
+/// Goes back to matching the iPhone's setting, and forgets the pick.
+Future<void> useSystemTheme() async {
+  followSystem.value = true;
+  SharedPreferences.getInstance().then((p) => p.remove(_key)).catchError((_) => false);
+  if (lightMode.value != _systemLight) await _flipWithFade(save: false);
+  _rebuildEverything();
+}
+
+/// Picks light or dark for good (until changed again).
+Future<void> setLightMode(bool light) async {
+  if (lightMode.value != light) {
+    await _flipWithFade();
+  } else {
+    followSystem.value = false;
+    SharedPreferences.getInstance().then((p) => p.setBool(_key, light)).catchError((_) => false);
+    _rebuildEverything();
+  }
 }
 
 /// Status and navigation bars to match the mode.
@@ -36,20 +66,27 @@ SystemUiOverlayStyle get systemBars {
   );
 }
 
-/// Switches between light and dark, with a cross-fade when [ThemeFade] is
-/// in the tree.
-Future<void> toggleLightMode() async {
+/// Switches between light and dark (and remembers it), with a cross-fade
+/// when [ThemeFade] is in the tree.
+Future<void> toggleLightMode() => _flipWithFade();
+
+Future<void> _flipWithFade({bool save = true}) async {
   final fade = _ThemeFadeState._current;
   if (fade != null) {
-    await fade.flip();
+    await fade.flip(save: save);
   } else {
-    _flip();
+    _flip(save: save);
   }
 }
 
-void _flip() {
+/// [save]: a pick (remembered, stops following the system), or false when
+/// following the iPhone's setting.
+void _flip({bool save = true}) {
   lightMode.value = !lightMode.value;
-  SharedPreferences.getInstance().then((p) => p.setBool(_key, lightMode.value)).catchError((_) => false);
+  if (save) {
+    followSystem.value = false;
+    SharedPreferences.getInstance().then((p) => p.setBool(_key, lightMode.value)).catchError((_) => false);
+  }
   SystemChrome.setSystemUIOverlayStyle(systemBars);
   _rebuildEverything();
 }
@@ -75,7 +112,7 @@ class ThemeFade extends StatefulWidget {
   State<ThemeFade> createState() => _ThemeFadeState();
 }
 
-class _ThemeFadeState extends State<ThemeFade> with SingleTickerProviderStateMixin {
+class _ThemeFadeState extends State<ThemeFade> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   static _ThemeFadeState? _current;
 
   final _boundary = GlobalKey();
@@ -87,17 +124,25 @@ class _ThemeFadeState extends State<ThemeFade> with SingleTickerProviderStateMix
   void initState() {
     super.initState();
     _current = this;
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  /// The iPhone switched light/dark: follow it, unless a pick was made.
+  @override
+  void didChangePlatformBrightness() {
+    if (followSystem.value && lightMode.value != _systemLight) flip(save: false);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     if (_current == this) _current = null;
     _fade.dispose();
     _shot?.dispose();
     super.dispose();
   }
 
-  Future<void> flip() async {
+  Future<void> flip({bool save = true}) async {
     if (_busy) return;
     _busy = true;
     ui.Image? shot;
@@ -115,7 +160,7 @@ class _ThemeFadeState extends State<ThemeFade> with SingleTickerProviderStateMix
       return;
     }
     setState(() => _shot = shot);
-    _flip();
+    _flip(save: save);
     if (shot != null) await _fade.forward(from: 0);
     if (mounted) setState(() => _shot = null);
     shot?.dispose();

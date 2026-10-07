@@ -245,6 +245,9 @@ ThemeData buildTheme() {
     textTheme: base.textTheme.apply(bodyColor: C.ink, displayColor: C.ink),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
+      // Float above the pinned button bars (Pay, Continue, Review) and the
+      // tab bar, so a message never covers the next step.
+      insetPadding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
       backgroundColor: _l ? chip : C.raised,
       contentTextStyle: const TextStyle(fontFamily: 'Manrope', fontSize: 13.5, fontWeight: FontWeight.w600, color: Color(0xFFF4F4F8)),
     ),

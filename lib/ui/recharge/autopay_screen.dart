@@ -33,7 +33,10 @@ bool _isOff(Connection c) => !_day(c.switchOffDate).isAfter(_day(DateTime.now())
 /// that's already off, a month after it's recharged today.
 DateTime _nextOff(Connection c) {
   final today = _day(DateTime.now());
-  return _isOff(c) ? DateTime(today.year, today.month + 1, today.day) : _day(c.switchOffDate);
+  if (!_isOff(c)) return _day(c.switchOffDate);
+  // A month on; 31 Jan → 28/29 Feb rather than spilling into March.
+  final lastDay = DateTime(today.year, today.month + 2, 0).day;
+  return DateTime(today.year, today.month + 1, today.day > lastDay ? lastDay : today.day);
 }
 
 /// The next auto-recharge: two days before that switch-off date, or
@@ -129,7 +132,7 @@ class _AutoPayScreenState extends State<AutoPayScreen> {
     ));
     if (!mounted || done != false) return;
     setState(() => _failed = true);
-    await showSheet<void>(
+    final next = await showSheet<String>(
       context,
       title: 'Couldn\'t set up Auto Pay',
       builder: (ctx) => Padding(
@@ -146,10 +149,15 @@ class _AutoPayScreenState extends State<AutoPayScreen> {
             ),
           ]),
           const SizedBox(height: S.xl),
-          PrimaryButton(label: 'Try again', onTap: () => Navigator.of(ctx).pop()),
+          PrimaryButton(label: 'Try again', onTap: () => Navigator.of(ctx).pop('retry')),
+          const SizedBox(height: S.sm),
+          SecondaryButton(label: 'Pay another way', onTap: () => Navigator.of(ctx).pop('method')),
         ]),
       ),
     );
+    if (!mounted) return;
+    if (next == 'retry') return _setUp(c);
+    if (next == 'method') return _pickPay();
   }
 
   Future<void> _turnOff(Connection c) async {
@@ -500,6 +508,8 @@ class _AutoPaySuccessState extends State<_AutoPaySuccess> with SingleTickerProvi
       },
       child: Scaffold(
         body: Stack(children: [
+          // Behind the content and clear of the status bar.
+          const Positioned.fill(child: SafeArea(child: Confetti())),
           SafeArea(
             child: Column(children: [
               Expanded(
@@ -570,7 +580,6 @@ class _AutoPaySuccessState extends State<_AutoPaySuccess> with SingleTickerProvi
               Padding(padding: const EdgeInsets.fromLTRB(S.page, 0, S.page, S.lg), child: PrimaryButton(label: 'Done', onTap: _done)),
             ]),
           ),
-          const Positioned.fill(child: Confetti()),
         ]),
       ),
     );

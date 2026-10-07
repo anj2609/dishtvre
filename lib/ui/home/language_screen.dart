@@ -35,7 +35,9 @@ class LanguageScreen extends StatelessWidget {
               appLanguage.value = english;
               ScaffoldMessenger.of(context)
                 ..hideCurrentSnackBar()
-                ..showSnackBar(SnackBar(content: Text('Language set to $english')));
+                // The app is in English for now; say so rather than claim a switch.
+                ..showSnackBar(SnackBar(
+                    content: Text(english == 'English' ? 'The app is in English' : '$english saved. The app switches to it when translations arrive.')));
             },
             child: SizedBox(
               height: 58,

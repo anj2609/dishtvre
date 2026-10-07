@@ -23,6 +23,8 @@ import '../checkout/review_screen.dart';
 import '../widgets/showtime.dart';
 import '../widgets/widgets.dart';
 import 'channel_filters.dart';
+import '../checkout/new_bill.dart';
+import '../checkout/plan_exit_guard.dart';
 
 class AddRemoveScreen extends StatefulWidget {
   const AddRemoveScreen({super.key});
@@ -95,7 +97,8 @@ class _AddRemoveScreenState extends State<AddRemoveScreen> {
         ),
       ),
     ];
-    return Scaffold(
+    return PlanExitGuard(
+        child: Scaffold(
       body: SafeArea(
         bottom: false,
         child: Column(children: [
@@ -105,7 +108,7 @@ class _AddRemoveScreenState extends State<AddRemoveScreen> {
           if (plan.hasChanges) _footer(plan),
         ]),
       ),
-    );
+    ));
   }
 
   // "Bedroom | VC 0102 7734 590 ⌄", right-aligned; opens the TV picker.
@@ -417,11 +420,11 @@ class _AddRemoveScreenState extends State<AddRemoveScreen> {
         child: Row(children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text('${plan.changeCount} ${plan.changeCount == 1 ? 'change' : 'changes'} | New bill about', style: T.caption),
+              Text('${plan.changeCount} ${plan.changeCount == 1 ? 'change' : 'changes'} | New bill', style: T.caption),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
-                child: Text('${rupees(plan.estimate)}/mo', style: T.price.copyWith(fontSize: 19)),
+                child: NewBill(plan, style: T.price.copyWith(fontSize: 19)),
               ),
             ]),
           ),

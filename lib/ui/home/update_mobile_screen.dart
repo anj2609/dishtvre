@@ -1,11 +1,13 @@
-// Update Mobile No.: shows the registered number (masked), and "Change
-// number" opens a field for the new one. "Send OTP" opens a sheet with six
-// boxes and a resend countdown; any six digits verify it (000000 shows the
-// wrong-OTP message). The new number is saved to the profile and a
-// confirmation shows what moved to it.
+// Update Mobile No.: shows the registered number. "Change number" first
+// sends an OTP to that number, so only its owner can move the account;
+// then a field takes the new one and "Send OTP" verifies that too. Each OTP
+// sheet has six boxes and a resend countdown; any six digits verify it
+// (000000 shows the wrong-OTP message). The new number is saved to the
+// profile, the old one gets a notice, and a confirmation shows what moved.
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -17,7 +19,6 @@ import '../widgets/widgets.dart';
 import 'support_screen.dart' show ContactSupportScreen;
 
 String _pretty(String m) => m.length == 10 ? '${m.substring(0, 5)} ${m.substring(5)}' : m;
-String _masked(String m) => m.length < 2 ? m : '${'X' * (m.length - 2)}${m.substring(m.length - 2)}';
 
 class UpdateMobileScreen extends StatefulWidget {
   const UpdateMobileScreen({super.key});
@@ -31,6 +32,9 @@ class _UpdateMobileScreenState extends State<UpdateMobileScreen> {
   final _focus = FocusNode();
   bool _changing = false;
   bool _sending = false;
+
+  /// Sending the OTP to the current number, before the new one can be typed.
+  bool _checking = false;
   String? _error;
 
   @override
@@ -47,8 +51,21 @@ class _UpdateMobileScreenState extends State<UpdateMobileScreen> {
     super.dispose();
   }
 
-  void _startChange() {
+  /// Proves the current number first: its owner gets an OTP. Only then can
+  /// a new number be typed.
+  Future<void> _startChange(String current) async {
     HapticFeedback.selectionClick();
+    setState(() => _checking = true);
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (!mounted) return;
+    setState(() => _checking = false);
+    final ok = await showSheet<bool>(
+      context,
+      title: 'Verify your current number',
+      subtitle: 'We\'ve sent a 6-digit OTP to +91 ${_pretty(current)}',
+      builder: (_) => const _OtpSheet(action: 'Verify'),
+    );
+    if (ok != true || !mounted) return;
     setState(() => _changing = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -83,9 +100,9 @@ class _UpdateMobileScreenState extends State<UpdateMobileScreen> {
     setState(() => _sending = false);
     final ok = await showSheet<bool>(
       context,
-      title: 'Verify mobile number',
+      title: 'Verify your new number',
       subtitle: 'We\'ve sent a 6-digit OTP to +91 ${_pretty(m)}',
-      builder: (_) => const _OtpSheet(),
+      builder: (_) => const _OtpSheet(action: 'Verify & Update'),
     );
     if (ok != true || !mounted) return;
     final app = context.read<AppStore>();
@@ -117,7 +134,7 @@ class _UpdateMobileScreenState extends State<UpdateMobileScreen> {
               children: [
                 Text('Your registered mobile number', style: T.title.copyWith(fontSize: 21, fontWeight: FontWeight.w700)),
                 const SizedBox(height: S.lg),
-                // The number on file, masked.
+                // The number on file.
                 Reveal(
                   child: Container(
                     color: C.surface,
@@ -132,7 +149,7 @@ class _UpdateMobileScreenState extends State<UpdateMobileScreen> {
                           FittedBox(
                             fit: BoxFit.scaleDown,
                             alignment: Alignment.centerLeft,
-                            child: Text(_masked(current), style: T.title.copyWith(fontSize: 19, fontWeight: FontWeight.w700, letterSpacing: 2)),
+                            child: Text('+91 ${_pretty(current)}', style: T.title.copyWith(fontSize: 19, fontWeight: FontWeight.w700)),
                           ),
                         ]),
                       ),
@@ -214,7 +231,7 @@ class _UpdateMobileScreenState extends State<UpdateMobileScreen> {
           BottomBar(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               if (!_changing)
-                PrimaryButton(label: 'Change number', onTap: _startChange)
+                PrimaryButton(label: 'Change number', busy: _checking, onTap: _checking ? null : () => _startChange(current))
               else ...[
                 PrimaryButton(label: 'Send OTP', busy: _sending, onTap: _number.text.length == 10 && !_sending ? () => _sendOtp(current) : null),
                 TextButton(onPressed: _sending ? null : _cancel, child: Text('Keep current number', style: T.label.copyWith(fontSize: 13, color: C.muted))),
@@ -248,7 +265,10 @@ class _Verified extends StatelessWidget {
 /// Six boxes over one hidden field, a resend countdown, and Verify &
 /// Update. Closes with true once the OTP checks out.
 class _OtpSheet extends StatefulWidget {
-  const _OtpSheet();
+  const _OtpSheet({required this.action});
+
+  /// The button: "Verify", or "Verify & Update" for the new number.
+  final String action;
 
   @override
   State<_OtpSheet> createState() => _OtpSheetState();
@@ -269,7 +289,13 @@ class _OtpSheetState extends State<_OtpSheet> {
   @override
   void initState() {
     super.initState();
-    _code.addListener(() => setState(() => _error = null));
+    // Typing hides the error; focus and cursor moves don't.
+    var last = _code.text;
+    _code.addListener(() {
+      if (_code.text == last) return;
+      last = _code.text;
+      setState(() => _error = null);
+    });
     _startTimer();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -313,11 +339,12 @@ class _OtpSheetState extends State<_OtpSheet> {
     if (!mounted) return;
     if (_code.text == '000000') {
       HapticFeedback.heavyImpact();
+      // Clear first: clearing counts as typing, which hides the error.
+      _code.clear();
       setState(() {
         _verifying = false;
         _error = 'That OTP isn\'t right. Check the SMS and try again.';
       });
-      _code.clear();
       _focus.requestFocus();
       return;
     }
@@ -384,7 +411,8 @@ class _OtpSheetState extends State<_OtpSheet> {
           Expanded(
             child: error != null
                 ? Text(error, style: T.caption.copyWith(fontSize: 12.5, color: C.danger, fontWeight: FontWeight.w600))
-                : Text(_resent ? 'A new OTP is on its way' : 'Use any 6 digits', style: T.caption.copyWith(fontSize: 12.5, color: C.muted)),
+                : Text(_resent ? 'A new OTP is on its way' : (kDebugMode ? 'Test build: any 6 digits work' : 'Enter the code from the SMS'),
+                    style: T.caption.copyWith(fontSize: 12.5, color: C.muted)),
           ),
           const SizedBox(width: S.md),
           if (_left > 0)
@@ -399,7 +427,7 @@ class _OtpSheetState extends State<_OtpSheet> {
             ),
         ]),
         const SizedBox(height: S.xl),
-        PrimaryButton(label: 'Verify & Update', busy: _verifying, onTap: code.length == _length && !_verifying ? _verify : null),
+        PrimaryButton(label: widget.action, busy: _verifying, onTap: code.length == _length && !_verifying ? _verify : null),
       ]),
     );
   }
@@ -444,6 +472,8 @@ class _UpdatedState extends State<_Updated> with SingleTickerProviderStateMixin 
         );
     return Scaffold(
       body: Stack(children: [
+        // Behind the content and clear of the status bar.
+        const Positioned.fill(child: SafeArea(child: Confetti())),
         SafeArea(
           child: Column(children: [
             Expanded(
@@ -500,9 +530,8 @@ class _UpdatedState extends State<_Updated> with SingleTickerProviderStateMixin 
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text('Old number', style: T.caption.copyWith(fontSize: 12, color: C.muted)),
                         const SizedBox(height: 2),
-                        Text(_masked(widget.old),
-                            style: T.label
-                                .copyWith(fontSize: 15, letterSpacing: 1.5, color: C.muted, decoration: TextDecoration.lineThrough, decorationColor: C.muted)),
+                        Text('+91 ${_pretty(widget.old)}',
+                            style: T.label.copyWith(fontSize: 15, color: C.muted, decoration: TextDecoration.lineThrough, decorationColor: C.muted)),
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: S.sm),
                           child: BrandShade(child: Icon(Icons.south_sharp, size: 20, color: C.brand)),
@@ -539,7 +568,7 @@ class _UpdatedState extends State<_Updated> with SingleTickerProviderStateMixin 
                       const SizedBox(width: S.sm),
                       Expanded(
                         child: Text.rich(TextSpan(style: T.caption.copyWith(fontSize: 12.5, color: C.muted), children: [
-                          const TextSpan(text: 'Didn\'t make this change? '),
+                          TextSpan(text: 'We\'ve also told +91 ${_pretty(widget.old)} about this change. Didn\'t make it? '),
                           WidgetSpan(
                             alignment: PlaceholderAlignment.baseline,
                             baseline: TextBaseline.alphabetic,
@@ -560,7 +589,6 @@ class _UpdatedState extends State<_Updated> with SingleTickerProviderStateMixin 
             Padding(padding: const EdgeInsets.fromLTRB(S.page, 0, S.page, S.lg), child: PrimaryButton(label: 'Done', onTap: () => Navigator.of(context).pop())),
           ]),
         ),
-        const Positioned.fill(child: Confetti()),
       ]),
     );
   }

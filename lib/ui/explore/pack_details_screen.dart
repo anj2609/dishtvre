@@ -84,12 +84,12 @@ class _PackDetailsScreenState extends State<PackDetailsScreen> {
                           // Price and the difference tag share a line, and wrap on narrow screens or big text.
                           Wrap(alignment: WrapAlignment.spaceBetween, crossAxisAlignment: WrapCrossAlignment.center, spacing: S.sm, runSpacing: 6, children: [
                             Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: [
-                              Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: Text(rupees(p.price), style: T.display.copyWith(color: Colors.white)))),
+                              Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: Text(rupees(p.price), style: T.display.copyWith(color: C.ink)))),
                               Padding(padding: const EdgeInsets.only(left: 4, bottom: 3), child: Text('/month', style: T.caption.copyWith(color: _soft))),
                             ]),
                             if (d != null)
                               Text(
-                                d.abs() < 0.5 ? 'Same as now' : '${rupees(d.abs())} ${d < 0 ? 'less' : 'more'} a month',
+                                d.abs() < 0.5 ? 'Same as your pack' : '${rupees(d.abs())} ${d < 0 ? 'less' : 'more'} than your pack',
                                 style: T.label.copyWith(fontSize: 13, fontWeight: FontWeight.w800, color: d < 0 && d.abs() >= 0.5 ? C.success : C.ink),
                               ),
                           ]),
@@ -105,7 +105,7 @@ class _PackDetailsScreenState extends State<PackDetailsScreen> {
                           ]),
                           if (p.ottApps.isNotEmpty) ...[
                             const SizedBox(height: S.md),
-                            Text('Includes ${p.ottApps.join(' | ')}', style: T.label.copyWith(color: Colors.white)),
+                            Text('Includes ${p.ottApps.join(' | ')}', style: T.label.copyWith(color: C.ink)),
                           ],
                         ]),
                       ),
@@ -203,7 +203,7 @@ class _PackDetailsScreenState extends State<PackDetailsScreen> {
 
   Widget _fact(String value, String label) => Expanded(
         child: Column(children: [
-          FittedBox(fit: BoxFit.scaleDown, child: Text(value, style: T.section.copyWith(fontSize: 18, color: Colors.white))),
+          FittedBox(fit: BoxFit.scaleDown, child: Text(value, style: T.section.copyWith(fontSize: 18, color: C.ink))),
           FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1, softWrap: false, style: T.caption.copyWith(color: _soft))),
         ]),
       );

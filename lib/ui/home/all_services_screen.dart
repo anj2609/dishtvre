@@ -13,28 +13,12 @@ import 'package:provider/provider.dart';
 import '../../app/theme.dart';
 import '../../state/app_store.dart';
 import '../../state/plan_store.dart';
-import '../change_pack/change_pack_screen.dart';
-import '../hd/upgrade_hd_screens.dart';
-import '../ott/add_ott_screen.dart';
 import '../change_pack/plan_screen.dart';
-import '../add_remove/add_remove_screen.dart';
 import '../widgets/widgets.dart';
-import '../recharge/autopay_screen.dart';
-import '../recharge/friends_family_screen.dart';
-import '../recharge/pay_later_screen.dart';
-import '../recharge/recharge_screen.dart';
-import '../vacation/vacation_mode_screen.dart';
-import 'account_statement_screen.dart';
-import 'bills_queries_screen.dart';
-import 'update_mobile_screen.dart';
-import 'home_screen.dart';
-import 'profile_screen.dart';
-import 'restore_signal_screen.dart';
-import 'tv_error_screen.dart';
+import 'services.dart';
 
 enum _Group { packs, recharge, account }
 
-typedef _Service = (IconData, String, VoidCallback);
 
 class AllServicesScreen extends StatefulWidget {
   const AllServicesScreen({super.key, this.initialTab = 0});
@@ -60,112 +44,9 @@ class _AllServicesScreenState extends State<AllServicesScreen> {
     _open(const PlanScreen(readOnly: true));
   }
 
-  void _soon(String what) => comingSoon(context, what);
-
-  Map<_Group, List<_Service>> get _services => {
-        _Group.packs: [
-          (Icons.live_tv_sharp, 'My Pack', _myPack),
-          (
-            Icons.add_to_queue_sharp,
-            'Add/Remove Channel',
-            () => _open(const AddRemoveScreen())
-          ),
-          (
-            Icons.layers_sharp,
-            'Change Pack',
-            () => _open(const ChangePackScreen())
-          ),
-          (Icons.smart_display_sharp, 'Add OTT', () => _open(const AddOttScreen())),
-          (
-            Icons.hd_outlined,
-            'Upgrade to HD',
-            () => _open(const HdCheckScreen())
-          ),
-          (Icons.list_alt_sharp, 'Channel Guide', () => _soon('Channel Guide')),
-          (
-            Icons.search_sharp,
-            'Channel No. Finder',
-            () => _soon('Channel No. Finder')
-          ),
-        ],
-        _Group.recharge: [
-          (Icons.currency_rupee_sharp, 'Recharge', () => _open(const RechargeScreen())),
-          (Icons.event_repeat_sharp, 'Autopay', () => _open(const AutoPayScreen())),
-          (
-            Icons.more_time_sharp,
-            'Pay Later',
-            () => _open(const PayLaterScreen())
-          ),
-          (
-            Icons.receipt_long_sharp,
-            'Account Statement',
-            () => _open(const AccountStatementScreen())
-          ),
-          (Icons.local_offer_outlined, 'Offers', () => _soon('Offers')),
-          (Icons.emoji_events_outlined, 'Loyalty', () => _soon('Loyalty')),
-          (
-            Icons.luggage_outlined,
-            'Pause Connection',
-            () => _open(const VacationModeScreen())
-          ),
-          (
-            Icons.people_alt_outlined,
-            'Recharge for Friends & Family',
-            () => _open(const FriendsFamilyScreen())
-          ),
-        ],
-        _Group.account: [
-          (
-            Icons.person_outline_sharp,
-            'My Account',
-            () => _open(const ProfileScreen())
-          ),
-          (
-            Icons.phonelink_ring_sharp,
-            'Update Mobile No.',
-            () => _open(const UpdateMobileScreen())
-          ),
-          (
-            Icons.troubleshoot_sharp,
-            'Troubleshoot',
-            () => _soon('Troubleshoot')
-          ),
-          (
-            Icons.request_quote_outlined,
-            'Bills & Queries',
-            () => _open(const BillsQueriesScreen())
-          ),
-          (
-            Icons.inventory_2_outlined,
-            'Orders & Requests',
-            () => _soon('Orders & Requests')
-          ),
-          (
-            Icons.wifi_tethering_error_sharp,
-            'Signal Issue',
-            () => _open(const RestoreSignalScreen())
-          ),
-          (
-            Icons.all_inclusive_sharp,
-            'Activate Always On',
-            () => _soon('Activate Always On')
-          ),
-          (
-            Icons.tv_off_outlined,
-            'Resolve on TV Error',
-            () => _open(const TvErrorScreen())
-          ),
-          (
-            Icons.engineering_outlined,
-            'Request Technician',
-            () => _soon('Request Technician')
-          ),
-        ],
-      };
-
   @override
   Widget build(BuildContext context) {
-    final list = _services[_g]!;
+    final list = serviceGroups(context, open: _open, myPack: _myPack)[_g.index];
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -197,7 +78,7 @@ class _AllServicesScreenState extends State<AllServicesScreen> {
                 key: ValueKey(_g),
                 padding: EdgeInsets.fromLTRB(S.page, S.lg, S.page,
                     S.xxl + MediaQuery.paddingOf(context).bottom),
-                child: _ServiceGrid(services: list),
+                child: ServiceGrid(services: list),
               ),
             ),
           ),
@@ -207,10 +88,10 @@ class _AllServicesScreenState extends State<AllServicesScreen> {
   }
 }
 
-class _ServiceGrid extends StatelessWidget {
-  const _ServiceGrid({required this.services});
+class ServiceGrid extends StatelessWidget {
+  const ServiceGrid({required this.services});
 
-  final List<_Service> services;
+  final List<Service> services;
 
   static const _gap = S.sm;
   static const _pad = 8.0;
@@ -248,6 +129,22 @@ class _ServiceGrid extends StatelessWidget {
           ? base.copyWith(fontSize: base.fontSize! * textW / widest * 0.97)
           : base;
 
+      // Every label gets the height of the tallest one, so all rows of the
+      // grid are the same height (a one-line row isn't shorter).
+      var labelH = 0.0;
+      if (!row) {
+        for (final s in services) {
+          final tp = TextPainter(
+              text: TextSpan(text: s.$2, style: style),
+              textScaler: scaler,
+              textAlign: TextAlign.center,
+              textDirection: TextDirection.ltr)
+            ..layout(maxWidth: textW);
+          labelH = math.max(labelH, tp.height);
+          tp.dispose();
+        }
+      }
+
       final rows = <Widget>[];
       for (var i = 0; i < services.length; i += cols) {
         final chunk = services.sublist(i, math.min(i + cols, services.length));
@@ -261,7 +158,7 @@ class _ServiceGrid extends StatelessWidget {
                 if (j > 0) const SizedBox(width: _gap),
                 Expanded(
                     child: j < chunk.length
-                        ? _Tile(service: chunk[j], style: style, row: row)
+                        ? _Tile(service: chunk[j], style: style, row: row, labelHeight: labelH)
                         : const SizedBox()),
               ],
             ]),
@@ -277,11 +174,14 @@ class _ServiceGrid extends StatelessWidget {
 /// One service: a white icon over its name on a quiet tile (or an
 /// icon beside the name when the grid collapses to a single column).
 class _Tile extends StatelessWidget {
-  const _Tile({required this.service, required this.style, required this.row});
+  const _Tile({required this.service, required this.style, required this.row, this.labelHeight = 0});
 
-  final _Service service;
+  final Service service;
   final TextStyle style;
   final bool row;
+
+  /// Room for the label in the grid, the same on every tile.
+  final double labelHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -303,7 +203,7 @@ class _Tile extends StatelessWidget {
               padding: row
                   ? const EdgeInsets.symmetric(horizontal: 16, vertical: 14)
                   : const EdgeInsets.fromLTRB(
-                      _ServiceGrid._pad, 20, _ServiceGrid._pad, 18),
+                      ServiceGrid._pad, 20, ServiceGrid._pad, 18),
               child: row
                   ? Row(children: [
                       iconW,
@@ -312,7 +212,11 @@ class _Tile extends StatelessWidget {
                     ])
                   : Column(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: [iconW, const SizedBox(height: 10), text]),
+                      children: [
+                          iconW,
+                          const SizedBox(height: 10),
+                          SizedBox(height: labelHeight, child: Align(alignment: Alignment.topCenter, child: text)),
+                        ]),
             ),
           ),
         ),

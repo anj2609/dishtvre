@@ -20,6 +20,8 @@ import '../widgets/showtime.dart';
 import '../widgets/widgets.dart';
 import 'plan_screen.dart';
 import 'switch_tv_sheet.dart';
+import '../checkout/new_bill.dart';
+import '../checkout/plan_exit_guard.dart';
 
 class ChangePackScreen extends StatefulWidget {
   const ChangePackScreen({super.key});
@@ -57,7 +59,8 @@ class _ChangePackScreenState extends State<ChangePackScreen> {
     final plan = context.watch<PlanStore>();
     final c = app.connection;
 
-    return Scaffold(
+    return PlanExitGuard(
+        child: Scaffold(
       body: SafeArea(
         bottom: false,
         child: Column(children: [
@@ -65,7 +68,8 @@ class _ChangePackScreenState extends State<ChangePackScreen> {
             plainBack: true,
             inline: true,
             title: 'Change pack',
-            subtitle: c == null ? null : '${c.label} (VC ${c.vcPretty})',
+            // Non-breaking spaces keep the VC number on one line.
+            subtitle: c == null ? null : '${c.label} · VC\u00A0${c.vcPretty.replaceAll(' ', '\u00A0')}',
             trailing: app.connections.length > 1 ? _switchPill() : null,
           ),
           Expanded(
@@ -94,7 +98,7 @@ class _ChangePackScreenState extends State<ChangePackScreen> {
           ),
         ]),
       ),
-    );
+    ));
   }
 
   // Outlined, slightly rounded, and nudged towards the screen edge.
@@ -172,8 +176,10 @@ class _ChangePackScreenState extends State<ChangePackScreen> {
             const SizedBox(width: S.md),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                BrandShade(child: Text('${plan.changeCount} ${plan.changeCount == 1 ? 'change' : 'changes'} not applied yet', style: T.item.copyWith(color: C.brandDeep))),
-                Text('New bill about ${rupees(plan.estimate)}/month | Tap to review', style: T.caption),
+                BrandShade(
+                    child: Text('${plan.changeCount} ${plan.changeCount == 1 ? 'change' : 'changes'} not applied yet',
+                        style: T.item.copyWith(color: C.brandDeep))),
+                Text('${newBillLine(plan)} | Tap to review', style: T.caption),
               ]),
             ),
             BrandShade(child: Icon(Icons.chevron_right_sharp, color: C.brandDeep)),
@@ -297,7 +303,6 @@ class _ChangePackScreenState extends State<ChangePackScreen> {
   Widget _iconBadge(IconData icon) => Container(
         width: 44,
         height: 44,
-        
         child: Icon(icon, color: Colors.white, size: 22),
       );
 

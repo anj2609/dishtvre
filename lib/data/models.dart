@@ -110,6 +110,8 @@ class Connection {
     this.lockInUntil,
     required this.planName,
     required this.isHd,
+    this.pauseFrom,
+    this.resumeOn,
   });
 
   final String vc;
@@ -123,7 +125,42 @@ class Connection {
   final String planName;
   final bool isHd;
 
+  /// Vacation Mode: the day the pause starts and the day the TV switches
+  /// back on. Set while a pause is booked or running.
+  final DateTime? pauseFrom;
+  final DateTime? resumeOn;
+
   bool get isMultiTv => type != ConnectionType.individual;
+
+  /// A pause is booked for later (the TV is still on until [pauseFrom]).
+  bool get vacationBooked => pauseFrom != null && status != ConnectionStatus.vacation;
+
+  /// [clearVacation] drops [pauseFrom] and [resumeOn].
+  Connection copyWith({
+    ConnectionStatus? status,
+    double? monthlyRecharge,
+    double? balance,
+    DateTime? switchOffDate,
+    String? planName,
+    bool? isHd,
+    DateTime? pauseFrom,
+    DateTime? resumeOn,
+    bool clearVacation = false,
+  }) =>
+      Connection(
+        vc: vc,
+        label: label,
+        type: type,
+        status: status ?? this.status,
+        monthlyRecharge: monthlyRecharge ?? this.monthlyRecharge,
+        balance: balance ?? this.balance,
+        switchOffDate: switchOffDate ?? this.switchOffDate,
+        lockInUntil: lockInUntil,
+        planName: planName ?? this.planName,
+        isHd: isHd ?? this.isHd,
+        pauseFrom: clearVacation ? null : (pauseFrom ?? this.pauseFrom),
+        resumeOn: clearVacation ? null : (resumeOn ?? this.resumeOn),
+      );
 
   /// Whole days until service stops (negative once it has stopped).
   int daysLeft(DateTime now) => DateTime(switchOffDate.year, switchOffDate.month, switchOffDate.day).difference(DateTime(now.year, now.month, now.day)).inDays;

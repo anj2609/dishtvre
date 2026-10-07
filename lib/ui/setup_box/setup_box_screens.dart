@@ -7,6 +7,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -671,7 +672,8 @@ class GetNewConnectionScreen extends StatefulWidget {
 
 class _GetNewConnectionScreenState extends State<GetNewConnectionScreen> {
   int _selected = 0;
-  final _antenna = List<bool>.filled(_plans.length, false);
+  /// A new home needs a dish antenna, so it starts on Yes.
+  final _antenna = List<bool>.filled(_plans.length, true);
   final _pincode = TextEditingController();
 
   @override
@@ -947,7 +949,7 @@ class _GetNewConnectionScreenState extends State<GetNewConnectionScreen> {
                           const SizedBox(width: S.sm),
                           Expanded(
                               child: Text(
-                                  'Every plan includes Prime Lite, 5X picture quality, 5.1 surround sound and a lifetime service warranty.',
+                                  'Every plan includes Prime Lite, 5X picture quality, 5.1 surround sound and a 5-year warranty on the box and dish.',
                                   style: T.caption
                                       .copyWith(fontSize: 13, height: 1.45))),
                         ]),
@@ -1066,11 +1068,12 @@ class _BoxReviewScreenState extends State<BoxReviewScreen> {
     } else {
       HapticFeedback.heavyImpact();
       setState(() => _failed = true);
-      await _showFailure();
+      if (await _showFailure() == true && mounted) return _pay();
     }
   }
 
-  Future<void> _showFailure() => showSheet<void>(
+  /// True to try the payment again.
+  Future<bool?> _showFailure() => showSheet<bool>(
         context,
         title: 'Payment failed',
         builder: (ctx) => Padding(
@@ -1100,8 +1103,12 @@ class _BoxReviewScreenState extends State<BoxReviewScreen> {
                 ),
                 const SizedBox(height: S.lg),
                 PrimaryButton(
-                    label: 'Back to payment',
-                    onTap: () => Navigator.of(ctx).pop()),
+                    label: 'Try again',
+                    onTap: () => Navigator.of(ctx).pop(true)),
+                const SizedBox(height: S.sm),
+                SecondaryButton(
+                    label: 'Not now',
+                    onTap: () => Navigator.of(ctx).pop(false)),
               ]),
         ),
       );
@@ -1290,7 +1297,7 @@ class _BoxSuccessScreenState extends State<BoxSuccessScreen>
       vsync: this, duration: const Duration(milliseconds: 1100))
     ..forward();
   late final String _orderId =
-      'ORD-${88000000 + DateTime.now().millisecondsSinceEpoch % 999999}';
+      'DT${(DateTime.now().millisecondsSinceEpoch % 100000000).toString().padLeft(8, '0')}';
   late final DateTime _delivery = DateTime.now().add(const Duration(days: 5));
 
   @override
@@ -1324,6 +1331,8 @@ class _BoxSuccessScreenState extends State<BoxSuccessScreen>
       },
       child: Scaffold(
         body: Stack(children: [
+          // Behind the content and clear of the status bar.
+          const Positioned.fill(child: SafeArea(child: Confetti())),
           SafeArea(
             child: Column(children: [
               Expanded(
@@ -1441,7 +1450,6 @@ class _BoxSuccessScreenState extends State<BoxSuccessScreen>
                   child: PrimaryButton(label: 'Done', onTap: _done)),
             ]),
           ),
-          const Positioned.fill(child: Confetti()),
         ]),
       ),
     );
@@ -1476,9 +1484,18 @@ class MultiTvScreen extends StatefulWidget {
   State<MultiTvScreen> createState() => _MultiTvScreenState();
 }
 
+/// What a Multi TV connection costs: the extra box once, and the network
+/// fee each month (channels on top, or share the main TV's pack).
+const _multiTvBox = 1690.0;
+const _multiTvMonthly = 153.0;
+
 class _MultiTvScreenState extends State<MultiTvScreen> {
   late final TextEditingController _mobile = TextEditingController(
-      text: context.read<AppStore>().subscriber?.mobile ?? '');
+      text: context.read<AppStore>().subscriber?.mobile ?? '')
+    ..addListener(() => setState(() {}));
+
+  /// The account's own number needs no OTP: you're already signed in.
+  bool get _registered => _mobile.text == context.read<AppStore>().subscriber?.mobile;
 
   @override
   void dispose() {
@@ -1531,14 +1548,14 @@ class _MultiTvScreenState extends State<MultiTvScreen> {
 
   Future<void> _book() async {
     FocusScope.of(context).unfocus();
-    if (!_valid) {
-      _toast(context, 'Enter a valid 10-digit mobile number');
-      return;
+    if (!_valid) return;
+    // Only a different number has to be verified.
+    if (!_registered) {
+      final ok = await showSheet<bool>(context,
+          title: 'Verify mobile number',
+          builder: (_) => _OtpSheet(pretty: '+91 $_pretty'));
+      if (ok != true || !mounted) return;
     }
-    final ok = await showSheet<bool>(context,
-        title: 'Verify mobile number',
-        builder: (_) => _OtpSheet(pretty: '+91 $_pretty'));
-    if (ok != true || !mounted) return;
     HapticFeedback.mediumImpact();
     Navigator.of(context).pushAndRemoveUntil(
         _route(_MultiTvSuccessScreen(pretty: '+91 $_pretty')),
@@ -1614,6 +1631,33 @@ class _MultiTvScreenState extends State<MultiTvScreen> {
                     note: 'Every TV on one account and one recharge.',
                     last: true),
                 const SizedBox(height: S.xl),
+                const _Heading('WHAT IT COSTS', color: _violet),
+                const SizedBox(height: S.md),
+                Container(
+                  color: C.surface,
+                  padding: const EdgeInsets.all(S.lg),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    for (final (what, note, price) in [
+                      ('Extra set-top box', 'One time, installation included', rupees(_multiTvBox)),
+                      ('Every month', 'Network fee with GST. Add channels, or share your pack', 'from ${rupees(_multiTvMonthly)}'),
+                    ])
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text(what, style: T.item.copyWith(fontSize: 15, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 2),
+                              Text(note, style: T.caption.copyWith(fontSize: 12.5)),
+                            ]),
+                          ),
+                          const SizedBox(width: S.md),
+                          Text(price, style: T.price.copyWith(fontSize: 17, fontWeight: FontWeight.w700)),
+                        ]),
+                      ),
+                  ]),
+                ),
+                const SizedBox(height: S.xl),
                 const _Heading('BOOK YOUR CONNECTION'),
                 const SizedBox(height: S.lg),
                 Text('Mobile number', style: T.label.copyWith(fontSize: 14)),
@@ -1652,8 +1696,11 @@ class _MultiTvScreenState extends State<MultiTvScreen> {
                 Row(children: [
                   Icon(Icons.sms_outlined, size: 16, color: C.muted),
                   const SizedBox(width: S.sm),
-                  Text('We will send an OTP to verify this number.',
-                      style: T.caption.copyWith(fontSize: 13)),
+                  Expanded(
+                    child: Text(
+                        _registered ? 'Your registered number. We\'ll call you on it.' : 'We\'ll send an OTP to verify this number.',
+                        style: T.caption.copyWith(fontSize: 13)),
+                  ),
                 ]),
                 const SizedBox(height: S.xxl),
                 const _Heading('WHAT HAPPENS NEXT', color: _orange),
@@ -1666,7 +1713,7 @@ class _MultiTvScreenState extends State<MultiTvScreen> {
               ],
             ),
           ),
-          BottomBar(child: PrimaryButton(label: 'Book Now', onTap: _book)),
+          BottomBar(child: PrimaryButton(label: 'Book Now', onTap: _valid ? _book : null)),
         ]),
       ),
     );
@@ -1787,7 +1834,7 @@ class _OtpSheetState extends State<_OtpSheet> {
             ),
             const SizedBox(height: S.sm),
             Row(children: [
-              Text('Use any 6 digits', style: T.caption),
+              Text(kDebugMode ? 'Test build: any 6 digits work' : 'Enter the code from the SMS', style: T.caption),
               const Spacer(),
               _left > 0
                   ? Text('Resend OTP in 0:${_left.toString().padLeft(2, '0')}',
@@ -1826,7 +1873,7 @@ class _MultiTvSuccessScreenState extends State<_MultiTvSuccessScreen>
       vsync: this, duration: const Duration(milliseconds: 1100))
     ..forward();
   late final String _id =
-      'MTV-${4000000 + DateTime.now().millisecondsSinceEpoch % 999999}';
+      'SR${(DateTime.now().millisecondsSinceEpoch % 100000000).toString().padLeft(8, '0')}';
 
   @override
   void dispose() {
@@ -1848,6 +1895,8 @@ class _MultiTvSuccessScreenState extends State<_MultiTvSuccessScreen>
       },
       child: Scaffold(
         body: Stack(children: [
+          // Behind the content and clear of the status bar.
+          const Positioned.fill(child: SafeArea(child: Confetti())),
           SafeArea(
             child: Column(children: [
               Expanded(
@@ -1946,7 +1995,6 @@ class _MultiTvSuccessScreenState extends State<_MultiTvSuccessScreen>
                   child: PrimaryButton(label: 'Done', onTap: _done)),
             ]),
           ),
-          const Positioned.fill(child: Confetti()),
         ]),
       ),
     );

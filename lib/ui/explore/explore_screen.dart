@@ -58,7 +58,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
       final value = packs.reduce((a, b) => a.price / a.channels <= b.price / b.channels ? a : b);
       badges[value.id] = ('Best value', C.success, C.successSoft);
       badges.putIfAbsent(cheapest.id, () => ('Lowest price', C.warning, C.warningSoft));
-      badges.putIfAbsent(most.id, () => ('Most channels', C.info, C.infoSoft));
+      // Only when it really has more channels than the TV's own pack.
+      if (most.channels > (plan.basePack?.channels ?? 0)) badges.putIfAbsent(most.id, () => ('Most channels', C.info, C.infoSoft));
     }
 
     return Scaffold(
@@ -274,7 +275,10 @@ class _PackCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = pack;
     final d = current > 0 ? p.price - current : null;
-    final flag = chosen ? ('CHOSEN', C.brand) : (badge == null ? null : (badge!.$1.toUpperCase(), C.muted));
+    // Choosing a pack adds "Chosen" and keeps its badge ("Chosen · Best value").
+    final flag = chosen
+        ? (['CHOSEN', if (badge != null) badge!.$1.toUpperCase()].join(' · '), C.brand)
+        : (badge == null ? null : (badge!.$1.toUpperCase(), C.muted));
     // Compact and flat: an outline, no fills.
     return Semantics(
       container: true,
@@ -317,7 +321,7 @@ class _PackCard extends StatelessWidget {
                         ),
                         if (d != null)
                           Text(
-                            d.abs() < 0.5 ? 'Same as yours' : '${rupees(d.abs())} ${d < 0 ? 'less' : 'more'}',
+                            d.abs() < 0.5 ? 'Same as your pack' : '${rupees(d.abs())} ${d < 0 ? 'less' : 'more'} than yours',
                             textAlign: TextAlign.end,
                             style: T.caption.copyWith(fontSize: 12, fontWeight: FontWeight.w800, color: d <= 0 ? C.success : C.warning),
                           ),

@@ -97,6 +97,8 @@ class _AiScreenState extends State<AiScreen> {
               title: _recs == null ? 'Find my pack' : 'Packs for you',
               subtitle: _recs == null ? 'Tell us what you watch' : 'Based on your answers',
               onBack: _back,
+              // Leave from any question, not only the first.
+              trailing: RoundIconButton(icon: Icons.close_sharp, label: 'Close', filled: false, onTap: () => Navigator.of(context).pop()),
             ),
             Expanded(
               child:
@@ -154,7 +156,19 @@ class _AiScreenState extends State<AiScreen> {
           Icons.weekend_sharp,
           'How do you like to watch?',
           'Pick one.',
-          [for (final v in o.viewing) Pick(label: v, selected: _a.viewing == v, onTap: () => setState(() => _a.viewing = v))]
+          // One answer: picking it moves on by itself, after a beat to see it.
+          [
+            for (final v in o.viewing)
+              Pick(
+                  label: v,
+                  selected: _a.viewing == v,
+                  onTap: () {
+                    setState(() => _a.viewing = v);
+                    Future.delayed(const Duration(milliseconds: 350), () {
+                      if (mounted && _q == 2 && _a.viewing == v) _next();
+                    });
+                  })
+          ]
         ),
       3 => (
           Icons.hd_sharp,
@@ -276,7 +290,7 @@ class _AiScreenState extends State<AiScreen> {
                 ])),
               ),
               if (d != null)
-                Text(d.abs() < 0.5 ? 'Same as now' : '${rupees(d.abs())} ${d < 0 ? 'less' : 'more'}',
+                Text(d.abs() < 0.5 ? 'Same as your pack' : '${rupees(d.abs())} ${d < 0 ? 'less' : 'more'} than yours',
                     textAlign: TextAlign.end, style: T.caption.copyWith(fontSize: 12, fontWeight: FontWeight.w800, color: d <= 0 ? C.success : C.warning)),
             ]),
           ),
@@ -311,8 +325,8 @@ class _AiScreenState extends State<AiScreen> {
         ),
         if (r.reasons.isNotEmpty) ...[
           const SizedBox(height: 8),
-          // The top two reasons, one line each.
-          for (final why in r.reasons.take(2))
+          // The top three reasons, one line each: your genres first.
+          for (final why in r.reasons.take(3))
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Icon(Icons.check_sharp, size: 15, color: C.success),
               const SizedBox(width: 6),

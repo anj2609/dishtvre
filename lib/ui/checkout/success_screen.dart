@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../app/theme.dart';
+import '../../state/app_store.dart';
 import '../../state/plan_store.dart';
 import '../widgets/showtime.dart';
 import '../widgets/widgets.dart';
@@ -33,7 +34,9 @@ class _SuccessScreenState extends State<SuccessScreen> with SingleTickerProvider
   }
 
   void _done() {
-    context.read<PlanStore>().finish();
+    final plan = context.read<PlanStore>();
+    final vc = plan.connection?.vc;
+    plan.finish(context.read<AppStore>().connections.where((c) => c.vc == vc).firstOrNull);
     Navigator.of(context).popUntil((r) => r.isFirst);
   }
 
@@ -56,6 +59,8 @@ class _SuccessScreenState extends State<SuccessScreen> with SingleTickerProvider
       },
       child: Scaffold(
         body: Stack(children: [
+          // Behind the content and clear of the status bar.
+          const Positioned.fill(child: SafeArea(child: Confetti())),
           SafeArea(
             child: Column(children: [
               Expanded(
@@ -139,7 +144,6 @@ class _SuccessScreenState extends State<SuccessScreen> with SingleTickerProvider
               ),
             ]),
           ),
-          const Positioned.fill(child: Confetti()),
         ]),
       ),
     );

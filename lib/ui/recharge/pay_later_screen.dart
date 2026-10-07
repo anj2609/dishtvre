@@ -14,6 +14,7 @@ import '../../data/models.dart';
 import '../../state/app_store.dart';
 import '../widgets/showtime.dart';
 import '../widgets/widgets.dart';
+import '../vacation/vacation_mode_screen.dart';
 import 'recharge_screen.dart' show PaymentCheckScreen, RechargeScreen;
 
 const _extraDays = 3;
@@ -105,9 +106,12 @@ class _PayLaterScreenState extends State<PayLaterScreen> {
   }
 
   /// Recharge for a TV that can't use Pay Later (or already has).
+  /// A TV that can't use Pay Later: on vacation, manage the vacation;
+  /// otherwise recharge it.
   void _recharge(AppStore app, Connection c) {
     app.selectVc(c.vc);
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RechargeScreen()));
+    final vacation = _why(c) == _Why.paused;
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => vacation ? const VacationModeScreen() : const RechargeScreen()));
   }
 
   @override
@@ -296,15 +300,16 @@ class _TvCard extends StatelessWidget {
     final left = c.daysLeft(DateTime.now());
     final off = left <= 0;
     final can = why == _Why.ok;
+    final action = why == _Why.paused ? 'Vacation Mode' : 'Recharge now';
     final (status, tone) = switch (why) {
       _Why.inUse => ('Pay Later on', C.success),
-      _Why.paused => ('Paused', C.muted),
+      _Why.paused => ('On vacation', C.muted),
       _ when off => ('Switched off', C.danger),
       _ => (left == 1 ? '1 day left' : '$left days left', left <= 5 ? C.danger : C.success),
     };
     final note = switch (why) {
       _Why.inUse => 'On Pay Later till ${_short(c.switchOffDate)}. Recharge before then to keep watching.',
-      _Why.paused => 'Paused for vacation, so it doesn\'t need Pay Later.',
+      _Why.paused => 'On vacation, so it doesn\'t need Pay Later.',
       _Why.early => 'Opens on ${_short(_day(c.switchOffDate).subtract(const Duration(days: _window)))}, a week before switch-off.',
       _Why.ok => null,
     };
@@ -320,7 +325,7 @@ class _TvCard extends StatelessWidget {
     return Semantics(
       button: true,
       selected: selected,
-      label: '${c.label}, VC ${c.vcPretty}, $status${can ? '' : '. Recharge now'}',
+      label: '${c.label}, VC ${c.vcPretty}, $status${can ? '' : '. $action'}',
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         padding: const EdgeInsets.all(1.5),
@@ -365,13 +370,13 @@ class _TvCard extends StatelessWidget {
                       padding: const EdgeInsets.only(left: indent),
                       child: Text(note, style: T.caption.copyWith(fontSize: 12, color: C.inkSoft)),
                     ),
-                    // Where to go instead: the card itself opens Recharge.
+                    // Where to go instead: the card itself opens it.
                     const SizedBox(height: S.sm),
                     Padding(
                       padding: const EdgeInsets.only(left: indent),
                       child: BrandShade(
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
-                          Text('Recharge now', style: T.label.copyWith(fontSize: 13, fontWeight: FontWeight.w700, color: C.brand)),
+                          Text(action, style: T.label.copyWith(fontSize: 13, fontWeight: FontWeight.w700, color: C.brand)),
                           Icon(Icons.chevron_right_sharp, size: 18, color: C.brand),
                         ]),
                       ),
@@ -503,6 +508,8 @@ class _PayLaterSuccessState extends State<_PayLaterSuccess> with SingleTickerPro
       },
       child: Scaffold(
         body: Stack(children: [
+          // Behind the content and clear of the status bar.
+          const Positioned.fill(child: SafeArea(child: Confetti())),
           SafeArea(
             child: Column(children: [
               Expanded(
@@ -570,7 +577,6 @@ class _PayLaterSuccessState extends State<_PayLaterSuccess> with SingleTickerPro
               ),
             ]),
           ),
-          const Positioned.fill(child: Confetti()),
         ]),
       ),
     );

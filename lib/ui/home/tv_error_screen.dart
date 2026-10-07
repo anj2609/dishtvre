@@ -572,7 +572,7 @@ class _Fixed extends StatefulWidget {
 
 class _FixedState extends State<_Fixed> with SingleTickerProviderStateMixin {
   late final AnimationController _a = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))..forward();
-  late final String _ref = 'TS${DateTime.now().millisecondsSinceEpoch % 100000000}';
+  late final String _ref = 'SR${(DateTime.now().millisecondsSinceEpoch % 100000000).toString().padLeft(8, '0')}';
 
   @override
   void dispose() {
@@ -650,9 +650,9 @@ class _FixedState extends State<_Fixed> with SingleTickerProviderStateMixin {
                     _fade(
                       0.3,
                       Column(children: [
-                        Text('Your TV is back on air', textAlign: TextAlign.center, style: T.display.copyWith(fontSize: 24)),
+                        Text('Fix sent to your TV', textAlign: TextAlign.center, style: T.display.copyWith(fontSize: 24)),
                         const SizedBox(height: 6),
-                        Text('We fixed "${widget.error.title}". Your channels should be back in a moment.', textAlign: TextAlign.center, style: T.body),
+                        Text('We sent a fix for "${widget.error.title}". Your channels should be back in a few minutes.', textAlign: TextAlign.center, style: T.body),
                         const SizedBox(height: S.md),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -688,7 +688,6 @@ class _FixedState extends State<_Fixed> with SingleTickerProviderStateMixin {
               ),
             ]),
           ),
-          const Positioned.fill(child: Confetti()),
         ]),
       ),
     );

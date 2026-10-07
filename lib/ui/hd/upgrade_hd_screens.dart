@@ -13,19 +13,56 @@ import 'package:provider/provider.dart';
 import '../../app/theme.dart';
 import '../../data/models.dart';
 import '../../state/app_store.dart';
+import '../../state/plan_store.dart';
 import '../change_pack/switch_tv_sheet.dart';
 import '../home/connection_card.dart' show fmtDate;
 import '../widgets/showtime.dart';
 import '../widgets/widgets.dart';
 
 const _packName = 'Family HD Pack';
-const _packPrice = 399.0;
 
-/// How much more the HD pack costs than the current pack, a month.
-const _vsCurrent = 50.0;
+/// What Upgrade to HD does to a TV's bill, priced by the same quote as every
+/// other plan change.
+class _HdPrice {
+  const _HdPrice({required this.pack, required this.items, required this.now, required this.next});
+  final PlanItem pack;
+
+  /// The TV's plan today.
+  final List<PlanItem> items;
+  final double now;
+  final double next;
+
+  bool get alreadyOn => items.any((i) => i.id == pack.id);
+  double get more => next - now;
+  List<PlanItem> get finalItems => [...items, pack];
+}
+
+final _prices = <String, Future<_HdPrice>>{};
+
+/// Priced once per TV and bill; a new pack or recharge prices it again.
+Future<_HdPrice> _hdPrice(AppStore app, Connection c) => _prices.putIfAbsent('${c.vc}|${c.monthlyRecharge}', () async {
+      final items = await app.repo.planItems(c.vc);
+      final pack = await app.repo.hdUpgrade(c.vc);
+      final next = items.any((i) => i.id == pack.id) ? c.monthlyRecharge : (await app.repo.quote(finalItems: [...items, pack])).total;
+      return _HdPrice(pack: pack, items: items, now: c.monthlyRecharge, next: next);
+    });
+
+/// Builds with the selected TV's HD price (null while it loads).
+class _Priced extends StatelessWidget {
+  const _Priced({required this.builder});
+  final Widget Function(_HdPrice? p) builder;
+
+  @override
+  Widget build(BuildContext context) {
+    final app = context.watch<AppStore>();
+    final c = app.connection;
+    if (c == null) return builder(null);
+    return FutureBuilder<_HdPrice>(future: _hdPrice(app, c), builder: (_, snap) => builder(snap.data));
+  }
+}
 
 const _logoBase = 'https://www.dishtv.in/content/dam/dishtv-aem-web-platform/mogiio/images/channels/';
-const _logoSlugs = {'National Geographic': 'national-geographic-channel', 'Sony': 'sony-entertainment-television'};
+const _logoSlugs = {'National Geographic': 'national-geographic-channel', 'Sony': 'sony-entertainment-television', 'Zee TV': 'zeetv'};
 
 /// The public dishtv.in logo for a channel, by the same slug convention the
 /// rest of the app uses.
@@ -36,16 +73,15 @@ String _logo(String name) {
 }
 
 const _hdChannels = [
-  'Colors HD', 'Discovery HD', 'HBO HD', 'National Geographic HD', 'Sony HD', 'Sony Max HD', 'Sony SAB HD', //
+  'Colors HD', 'Discovery HD', 'Star Bharat HD', 'National Geographic HD', 'Sony HD', 'Sony Max HD', 'Sony SAB HD', //
   'Star Plus HD', 'Zee TV HD', 'Star Gold HD', 'Star Sports 1 HD', 'Sony Ten 1 HD', 'Zee Cinema HD', 'Colors Cineplex HD',
 ];
 const _sdReplaced = ['Colors', 'Sony', 'Star Plus', 'Zee TV'];
 
-/// The three things checked, in order.
+/// What HD depends on, checked in order. (Any remote works with HD.)
 const _equipment = [
   (Icons.router_outlined, 'Set-top box'),
   (Icons.satellite_alt_outlined, 'Dish antenna & LNB'),
-  (Icons.settings_remote_outlined, 'Remote control'),
 ];
 
 Route<T> _route<T>(Widget w) => MaterialPageRoute<T>(builder: (_) => w);
@@ -363,7 +399,10 @@ class HdCheckScreen extends StatefulWidget {
 class _HdCheckScreenState extends State<HdCheckScreen> with TickerProviderStateMixin {
   late final AnimationController _spin = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400));
   late final AnimationController _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800));
-  late final AnimationController _progress = AnimationController(vsync: this, duration: const Duration(milliseconds: 3000));
+  /// One tick every 750 ms after a short start, then a beat before moving on.
+  static final _checkTime = Duration(milliseconds: 800 + _equipment.length * 750 + 400);
+
+  late final AnimationController _progress = AnimationController(vsync: this, duration: _checkTime);
   int _checked = 0;
   final _timers = <Timer>[];
 
@@ -388,7 +427,7 @@ class _HdCheckScreenState extends State<HdCheckScreen> with TickerProviderStateM
         setState(() => _checked = i + 1);
       }));
     }
-    _timers.add(Timer(const Duration(milliseconds: 3300), _next));
+    _timers.add(Timer(_checkTime + const Duration(milliseconds: 300), _next));
   }
 
   void _next() {
@@ -609,7 +648,6 @@ class HdEligibilityScreen extends StatelessWidget {
                       final rows = [
                         ('Set-top box · ${w.items.first.model ?? 'HD'}', 'Supports HD · installed $on', 'HD ready'),
                         ('Dish antenna & LNB', 'Installed $on', 'Compatible'),
-                        ('Remote control', 'Installed $on', 'Compatible'),
                       ];
                       return Column(children: [
                         for (final (i, r) in rows.indexed) ...[
@@ -697,11 +735,23 @@ class HdOfferScreen extends StatelessWidget {
                               Text('${_hdChannels.length} HD channels · 30 days', style: T.caption.copyWith(fontSize: 13, color: C.muted)),
                             ]),
                           ),
-                          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                            _CountUp(_packPrice, style: T.price.copyWith(fontSize: 28, fontWeight: FontWeight.w700)),
-                            const SizedBox(height: 4),
-                            BrandShade(child: Text('+ ${rupees(_vsCurrent)}/mo vs current', style: T.label.copyWith(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.brand))),
-                          ]),
+                          _Priced(
+                            builder: (p) => Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                              p == null
+                                  ? const SizedBox(width: 72, child: Skeleton(height: 30))
+                                  : _CountUp(p.pack.price, style: T.price.copyWith(fontSize: 28, fontWeight: FontWeight.w700)),
+                              const SizedBox(height: 4),
+                              BrandShade(
+                                child: Text(
+                                    p == null
+                                        ? ' '
+                                        : p.alreadyOn
+                                            ? 'Already on your TV'
+                                            : '+ ${rupees(p.more)}/mo on your bill',
+                                    style: T.label.copyWith(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.brand)),
+                              ),
+                            ]),
+                          ),
                         ]),
                         const SizedBox(height: S.md),
                         Divider(height: 1, color: C.line),
@@ -724,7 +774,15 @@ class HdOfferScreen extends StatelessWidget {
               ],
             ),
           ),
-          BottomBar(child: PrimaryButton(label: 'Continue', icon: Icons.arrow_forward_sharp, onTap: () => Navigator.of(context).push(_route(const HdReviewScreen())))),
+          BottomBar(
+            child: _Priced(
+              builder: (p) => PrimaryButton(
+                label: p?.alreadyOn == true ? 'Already on this TV' : 'Continue',
+                icon: p?.alreadyOn == true ? null : Icons.arrow_forward_sharp,
+                onTap: p == null || p.alreadyOn ? null : () => Navigator.of(context).push(_route(const HdReviewScreen())),
+              ),
+            ),
+          ),
         ]),
       ),
     );
@@ -761,12 +819,28 @@ class _HdReviewScreenState extends State<HdReviewScreen> {
   bool _busy = false;
   bool _open = true;
 
-  Future<void> _confirm() async {
+  /// Adds the HD pack to the TV's plan, then shows the TV's new bill
+  /// everywhere before the success screen.
+  Future<void> _confirm(_HdPrice p) async {
+    final app = context.read<AppStore>();
+    final plan = context.read<PlanStore>();
+    final nav = Navigator.of(context);
+    final c = app.connection;
+    if (c == null) return;
     setState(() => _busy = true);
-    await Future<void>.delayed(const Duration(milliseconds: 900));
-    if (!mounted) return;
-    HapticFeedback.mediumImpact();
-    Navigator.of(context).pushAndRemoveUntil(_route(const HdSuccessScreen()), (r) => r.isFirst);
+    try {
+      final orderId = await app.repo.apply(vc: c.vc, finalItems: p.finalItems);
+      await app.refresh();
+      final updated = app.connections.where((x) => x.vc == c.vc).firstOrNull;
+      if (updated != null && plan.connection?.vc == c.vc) plan.reload(updated);
+      if (!mounted) return;
+      HapticFeedback.mediumImpact();
+      nav.pushAndRemoveUntil(_route(HdSuccessScreen(orderId: orderId, packPrice: p.pack.price)), (r) => r.isFirst);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('We couldn’t add the HD pack. Please try again.')));
+    }
   }
 
   @override
@@ -794,7 +868,7 @@ class _HdReviewScreenState extends State<HdReviewScreen> {
                   Semantics(
                     button: true,
                     expanded: _open,
-                    label: '$_packName, ${rupees(_packPrice)} a month',
+                    label: _packName,
                     child: InkWell(
                       onTap: () => setState(() => _open = !_open),
                       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -813,7 +887,7 @@ class _HdReviewScreenState extends State<HdReviewScreen> {
                             Text(['${_hdChannels.length} HD channels', '30 days', if (c != null) c.label].join(' · '), style: T.caption.copyWith(fontSize: 13, color: C.muted)),
                           ]),
                         ),
-                        Text('${rupees(_packPrice)}/mo', style: T.price.copyWith(fontSize: 19, fontWeight: FontWeight.w700)),
+                        _Priced(builder: (p) => Text(p == null ? '' : '${rupees(p.pack.price)}/mo', style: T.price.copyWith(fontSize: 19, fontWeight: FontWeight.w700))),
                       ]),
                     ),
                   ),
@@ -832,22 +906,24 @@ class _HdReviewScreenState extends State<HdReviewScreen> {
             Container(
               padding: EdgeInsets.fromLTRB(S.page, S.xl, S.page, S.lg + MediaQuery.paddingOf(context).bottom),
               decoration: BoxDecoration(color: C.surface, border: Border(top: BorderSide(color: C.line))),
-              child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Text('MONTHLY COST', style: T.overline.copyWith(fontSize: 11.5)),
-                const SizedBox(height: S.sm),
-                row(_packName, '₹${_packPrice.toStringAsFixed(2)}'),
-                row('vs current pack', '+ ₹${_vsCurrent.toStringAsFixed(2)}'),
-                Padding(padding: EdgeInsets.symmetric(vertical: S.md), child: Divider(height: 1, color: C.line)),
-                Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
-                  Text('Total', style: T.title.copyWith(fontSize: 18, fontWeight: FontWeight.w700)),
-                  const SizedBox(width: 6),
-                  Text('per month', style: T.caption.copyWith(fontSize: 13, color: C.muted)),
-                  const Spacer(),
-                  _CountUp(_packPrice, decimals: true, style: T.price.copyWith(fontSize: 26, fontWeight: FontWeight.w700)),
+              child: _Priced(
+                builder: (p) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Text('MONTHLY BILL', style: T.overline.copyWith(fontSize: 11.5)),
+                  const SizedBox(height: S.sm),
+                  row('Your bill now', p == null ? '' : rupees(p.now)),
+                  row('$_packName, with NCF and GST', p == null ? '' : '+ ${rupees(p.more)}'),
+                  Padding(padding: EdgeInsets.symmetric(vertical: S.md), child: Divider(height: 1, color: C.line)),
+                  Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+                    Text('New bill', style: T.title.copyWith(fontSize: 18, fontWeight: FontWeight.w700)),
+                    const SizedBox(width: 6),
+                    Text('per month', style: T.caption.copyWith(fontSize: 13, color: C.muted)),
+                    const Spacer(),
+                    if (p != null) _CountUp(p.next, style: T.price.copyWith(fontSize: 26, fontWeight: FontWeight.w700)),
+                  ]),
+                  const SizedBox(height: S.lg),
+                  PrimaryButton(label: 'Confirm & Apply', busy: _busy, onTap: p == null || p.alreadyOn ? null : () => _confirm(p)),
                 ]),
-                const SizedBox(height: S.lg),
-                PrimaryButton(label: 'Confirm & Apply', busy: _busy, onTap: _confirm),
-              ]),
+              ),
             ),
           ]),
         ),
@@ -860,7 +936,9 @@ class _HdReviewScreenState extends State<HdReviewScreen> {
 // Success
 
 class HdSuccessScreen extends StatefulWidget {
-  const HdSuccessScreen({super.key});
+  const HdSuccessScreen({super.key, required this.orderId, required this.packPrice});
+  final String orderId;
+  final double packPrice;
 
   @override
   State<HdSuccessScreen> createState() => _HdSuccessScreenState();
@@ -868,7 +946,6 @@ class HdSuccessScreen extends StatefulWidget {
 
 class _HdSuccessScreenState extends State<HdSuccessScreen> with SingleTickerProviderStateMixin {
   late final AnimationController _a = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..forward();
-  late final String _id = 'TKT-${2200000 + DateTime.now().millisecondsSinceEpoch % 99999}';
 
   @override
   void dispose() {
@@ -893,6 +970,8 @@ class _HdSuccessScreenState extends State<HdSuccessScreen> with SingleTickerProv
       },
       child: Scaffold(
         body: Stack(children: [
+          // Behind the content and clear of the status bar.
+          const Positioned.fill(child: SafeArea(child: Confetti())),
           SafeArea(
             child: Column(children: [
               Expanded(
@@ -918,7 +997,7 @@ class _HdSuccessScreenState extends State<HdSuccessScreen> with SingleTickerProv
                         const SizedBox(height: 6),
                         Text('Your HD channels will start within a few minutes.', textAlign: TextAlign.center, style: T.body),
                         const SizedBox(height: S.md),
-                        Text('Order ID · $_id', style: T.label.copyWith(color: C.muted)),
+                        Text('Order ID · ${widget.orderId}', style: T.label.copyWith(color: C.muted)),
                       ]),
                     ),
                     const SizedBox(height: S.xl),
@@ -932,7 +1011,7 @@ class _HdSuccessScreenState extends State<HdSuccessScreen> with SingleTickerProv
                             child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                               Expanded(child: _figure('Next recharge', fmtDate(c.switchOffDate))),
                               Container(width: 1, margin: const EdgeInsets.symmetric(horizontal: S.lg), color: const Color(0x40FFFFFF)),
-                              Expanded(child: _figure('Monthly pack', rupees(_packPrice))),
+                              Expanded(child: _figure('Monthly bill', rupees(c.monthlyRecharge))),
                             ]),
                           ),
                         ),
@@ -953,7 +1032,7 @@ class _HdSuccessScreenState extends State<HdSuccessScreen> with SingleTickerProv
                             ]),
                           ),
                           const SizedBox(width: S.md),
-                          Text('${rupees(_packPrice)}/mo', style: T.price.copyWith(fontSize: 16)),
+                          Text('${rupees(widget.packPrice)}/mo', style: T.price.copyWith(fontSize: 16)),
                         ]),
                       ),
                     ),
@@ -976,7 +1055,6 @@ class _HdSuccessScreenState extends State<HdSuccessScreen> with SingleTickerProv
               Padding(padding: const EdgeInsets.fromLTRB(S.page, 0, S.page, S.lg), child: PrimaryButton(label: 'Done', onTap: _done)),
             ]),
           ),
-          const Positioned.fill(child: Confetti()),
         ]),
       ),
     );

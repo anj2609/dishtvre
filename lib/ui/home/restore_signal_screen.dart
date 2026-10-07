@@ -1,4 +1,4 @@
-// Signal Issue ("Restore Signal"): when subscribed channels won't play, pick
+// Restore Signal: when subscribed channels won't play, pick
 // the TV and we send a free refresh command to its set-top box. A short
 // "Refreshing your service" check plays, then a confirmation with a
 // reference ID. "Still not working?" lists what to try next, with a way to
@@ -203,7 +203,7 @@ class _TvCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final note = switch (can) {
       _Can.off => ('Switched off. A refresh won\'t help; recharge to switch it on.', 'Recharge', C.danger),
-      _Can.paused => ('Paused for vacation, so channels are off on purpose.', 'Vacation Mode', C.info),
+      _Can.paused => ('On vacation, so channels are off on purpose.', 'Vacation Mode', C.info),
       _Can.ok => null,
     };
     return Semantics(
@@ -272,7 +272,7 @@ class _Refreshed extends StatefulWidget {
 
 class _RefreshedState extends State<_Refreshed> with SingleTickerProviderStateMixin {
   late final AnimationController _a = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500))..forward();
-  late final String _ref = 'RS${DateTime.now().millisecondsSinceEpoch % 100000000}';
+  late final String _ref = 'SR${(DateTime.now().millisecondsSinceEpoch % 100000000).toString().padLeft(8, '0')}';
 
   @override
   void dispose() {
@@ -395,9 +395,9 @@ class _RefreshedState extends State<_Refreshed> with SingleTickerProviderStateMi
                     _fade(
                       0.25,
                       Column(children: [
-                        Text('Your service has been refreshed', textAlign: TextAlign.center, style: T.display.copyWith(fontSize: 24)),
+                        Text('Refresh sent to your set-top box', textAlign: TextAlign.center, style: T.display.copyWith(fontSize: 24)),
                         const SizedBox(height: 6),
-                        Text('Please wait a moment and check your TV.', textAlign: TextAlign.center, style: T.body),
+                        Text('Channels usually come back within 15 minutes. Check your TV, and tell us if they don\'t.', textAlign: TextAlign.center, style: T.body),
                         const SizedBox(height: S.md),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -444,7 +444,6 @@ class _RefreshedState extends State<_Refreshed> with SingleTickerProviderStateMi
               ),
             ]),
           ),
-          const Positioned.fill(child: Confetti()),
         ]),
       ),
     );

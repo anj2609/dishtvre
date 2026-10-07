@@ -13,6 +13,7 @@ import '../../state/app_store.dart';
 import '../../state/plan_store.dart';
 import '../checkout/review_screen.dart';
 import '../widgets/widgets.dart';
+import '../checkout/new_bill.dart';
 
 class TopUpsScreen extends StatefulWidget {
   const TopUpsScreen({super.key, this.step});
@@ -164,11 +165,8 @@ class _TopUpsScreenState extends State<TopUpsScreen> {
         child: Row(children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text('New bill about', style: T.caption),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: Text('${rupees(plan.estimate)}/mo', key: ValueKey(plan.estimate.round()), style: T.price.copyWith(fontSize: 19)),
-              ),
+              Text(plan.hasChanges ? 'New bill' : 'Your bill', style: T.caption),
+              NewBill(plan, style: T.price.copyWith(fontSize: 19)),
             ]),
           ),
           SizedBox(

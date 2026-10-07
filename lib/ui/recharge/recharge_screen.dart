@@ -11,6 +11,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/theme.dart';
 import '../../data/models.dart';
@@ -26,7 +27,28 @@ const _monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 String _date(DateTime d) => '${d.day} ${_monthNames[d.month - 1]} ${d.year}';
 String _short(DateTime d) => '${d.day} ${_monthNames[d.month - 1]}';
 DateTime _day(DateTime d) => DateTime(d.year, d.month, d.day);
-DateTime _plusMonths(DateTime d, int m) => DateTime(d.year, d.month + m, d.day);
+/// [m] calendar months on; a day the month doesn't have (31 Jan + 1)
+/// becomes its last day (28 or 29 Feb), not a day in the month after.
+DateTime _plusMonths(DateTime d, int m) {
+  final lastDay = DateTime(d.year, d.month + m + 1, 0).day;
+  return DateTime(d.year, d.month + m, d.day > lastDay ? lastDay : d.day);
+}
+
+/// The smallest and largest recharge: 7 days and 12 months of the pack.
+double _minAmount(double monthly) => (monthly * 7 / 30).ceilToDouble();
+double _maxAmount(double monthly) => monthly * 12;
+
+/// How long [amount] lasts from [start]: exact calendar months when it's a
+/// whole number of months (so it matches the 1M–12M tiles), otherwise whole
+/// days at the pack's daily rate.
+@visibleForTesting
+DateTime rechargeTill(DateTime start, double amount, double monthly) {
+  final months = amount / monthly;
+  final m = months.round();
+  if (m >= 1 && m <= 12 && (months - m).abs() < 0.001) return _plusMonths(start, m);
+  // A small nudge so 747 / 8.3 lands on 90, not 89.999….
+  return start.add(Duration(days: (amount * 30 / monthly + 1e-9).floor()));
+}
 
 bool _still(BuildContext c) => MediaQuery.of(c).disableAnimations;
 
@@ -45,21 +67,27 @@ class _Offer {
 
 const _offers = [
   _Offer(
-      title: 'Get 15 days entertainment FREE on 6 month recharge',
+      title: '15 days free with a 6-month recharge',
       detail: 'Recharge for 6 months and get 15 extra days of service at no cost.',
       months: 6,
       bonusDays: 15),
   _Offer(
-      title: 'ROYALE SPORTS KIDS HSM (3M) for ₹899 for 3 months',
-      detail: 'Three months of your pack plus the Royale Sports Kids add-on, for one price.',
-      months: 3,
-      price: 899),
+      title: 'Sports & Kids add-on free with a 3-month recharge',
+      detail: 'Recharge for 3 months and get the Sports & Kids add-on for those 3 months at no cost.',
+      months: 3),
   _Offer(
-      title: 'Enjoy Entertainment 10 EXTRA days on 12 month recharge',
+      title: '10 days free with a 12-month recharge',
       detail: 'Recharge for a year and get 10 extra days of service at no cost.',
       months: 12,
       bonusDays: 10),
 ];
+
+/// The first step while a payment is checked, in words that fit the method.
+String _firstStep(String method) => method.contains('UPI')
+    ? 'Waiting for ${method.replaceAll(' UPI', '')}'
+    : method.contains('card')
+        ? 'Checking your card'
+        : 'Waiting for your bank';
 
 /// Ways to pay, shared with Auto Pay.
 const payMethods = [
@@ -98,8 +126,27 @@ class _RechargeScreenState extends State<RechargeScreen> {
   /// The applied offer, if any (index into [_offers]).
   int? _offer;
 
-  int _pay = 0;
+  int _pay = _lastPay;
   bool _failed = false;
+
+  /// The way you paid last time, kept between visits and launches.
+  static int _lastPay = 0;
+  static const _payKey = 'pay_method';
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((p) {
+      final i = p.getInt(_payKey);
+      if (!mounted || i == null || i < 0 || i >= payMethods.length || i == _pay) return;
+      setState(() => _pay = _lastPay = i);
+    }).catchError((_) {});
+  }
+
+  void _setPay(int i) {
+    setState(() => _pay = _lastPay = i);
+    SharedPreferences.getInstance().then((p) => p.setInt(_payKey, i)).catchError((_) => false);
+  }
 
   void _setMonths(int m) {
     HapticFeedback.selectionClick();
@@ -130,10 +177,7 @@ class _RechargeScreenState extends State<RechargeScreen> {
       final o = _offers[_offer!];
       return _plusMonths(start, o.months).add(Duration(days: o.bonusDays));
     }
-    if (_custom != null) {
-      final perDay = c.monthlyRecharge / 30;
-      return start.add(Duration(days: (_custom! / perDay).floor()));
-    }
+    if (_custom != null) return rechargeTill(start, _custom!, c.monthlyRecharge);
     return _plusMonths(start, _months);
   }
 
@@ -164,8 +208,8 @@ class _RechargeScreenState extends State<RechargeScreen> {
     final v = await showSheet<double>(
       context,
       title: 'Enter an amount',
-      subtitle: 'Any amount from ${rupees(c.monthlyRecharge / 30 * 7)} (7 days).',
-      builder: (_) => _AmountSheet(monthly: c.monthlyRecharge, initial: _amount(c)),
+      subtitle: 'From ${rupees(_minAmount(c.monthlyRecharge))} (7 days) to ${rupees(_maxAmount(c.monthlyRecharge))} (12 months).',
+      builder: (_) => _AmountSheet(monthly: c.monthlyRecharge, initial: _amount(c), start: _start(c)),
     );
     if (v != null) {
       setState(() {
@@ -240,10 +284,11 @@ class _RechargeScreenState extends State<RechargeScreen> {
         ],
       ),
     );
-    if (i != null) setState(() => _pay = i);
+    if (i != null) _setPay(i);
   }
 
   Future<void> _proceed(Connection c) async {
+    final app = context.read<AppStore>();
     final amount = _amount(c);
     final valid = _validTill(c);
     final ok = await showSheet<bool>(
@@ -269,14 +314,22 @@ class _RechargeScreenState extends State<RechargeScreen> {
         amount: amount,
         method: method,
         success: ok,
-        onSuccess: () => _RechargeSuccess(
-            tv: c.label, vc: c.vcPretty, amount: amount, validTill: valid, method: method, forSomeone: widget.other != null, mobile: widget.mobile),
+        onSuccess: () {
+          // Your own TV: show the new validity everywhere and switch it back
+          // on if it had stopped. Pay Later can be used again.
+          if (widget.other == null) {
+            app.recharge(c.vc, amount: amount, validTill: valid);
+            payLaterUsed.value = {...payLaterUsed.value}..remove(c.vc);
+          }
+          return _RechargeSuccess(
+              tv: c.label, vc: c.vcPretty, amount: amount, validTill: valid, method: method, forSomeone: widget.other != null, mobile: widget.mobile);
+        },
       ),
       transitionsBuilder: (_, a, __, child) => FadeTransition(opacity: a, child: child),
     ));
     if (!mounted || paid != false) return;
     setState(() => _failed = true);
-    await showSheet<void>(
+    final next = await showSheet<String>(
       context,
       title: 'Payment failed',
       builder: (ctx) => Padding(
@@ -291,10 +344,15 @@ class _RechargeScreenState extends State<RechargeScreen> {
             ),
           ]),
           const SizedBox(height: S.xl),
-          PrimaryButton(label: 'Back to recharge', onTap: () => Navigator.of(ctx).pop()),
+          PrimaryButton(label: 'Try again', onTap: () => Navigator.of(ctx).pop('retry')),
+          const SizedBox(height: S.sm),
+          SecondaryButton(label: 'Pay another way', onTap: () => Navigator.of(ctx).pop('method')),
         ]),
       ),
     );
+    if (!mounted) return;
+    if (next == 'retry') return _proceed(c);
+    if (next == 'method') return _pickPay();
   }
 
   // ------------------------------------------------------------- build
@@ -439,7 +497,8 @@ class _RechargeScreenState extends State<RechargeScreen> {
                         child: _DurationTile(
                           months: m,
                           price: c.monthlyRecharge * m,
-                          selected: _custom == null && _offer == null && _months == m,
+                          // An applied offer lights up its length too (6M for the 6-month offer).
+                          selected: _custom == null && (_offer == null ? _months == m : _offers[_offer!].months == m),
                           onTap: () => _setMonths(m),
                         ),
                       ),
@@ -766,9 +825,12 @@ class _AppliedChip extends StatelessWidget {
 
 /// Type an amount; shows how many days it covers as you type.
 class _AmountSheet extends StatefulWidget {
-  const _AmountSheet({required this.monthly, required this.initial});
+  const _AmountSheet({required this.monthly, required this.initial, required this.start});
   final double monthly;
   final double initial;
+
+  /// When the recharge starts (the switch-off date, or today).
+  final DateTime start;
 
   @override
   State<_AmountSheet> createState() => _AmountSheetState();
@@ -786,9 +848,10 @@ class _AmountSheetState extends State<_AmountSheet> {
   @override
   Widget build(BuildContext context) {
     final v = double.tryParse(_ctrl.text) ?? 0;
-    final perDay = widget.monthly / 30;
-    final days = (v / perDay).floor();
-    final ok = days >= 7;
+    final min = _minAmount(widget.monthly), max = _maxAmount(widget.monthly);
+    final ok = v >= min && v <= max;
+    final till = rechargeTill(widget.start, v, widget.monthly);
+    final days = till.difference(widget.start).inDays;
     return Padding(
       padding: EdgeInsets.fromLTRB(S.page, S.sm, S.page, S.xl + MediaQuery.viewInsetsOf(context).bottom + MediaQuery.paddingOf(context).bottom),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -813,7 +876,12 @@ class _AmountSheetState extends State<_AmountSheet> {
           ]),
         ),
         const SizedBox(height: S.sm),
-        Text(ok ? 'Covers about $days days' : 'Enter at least ${rupees((perDay * 7).ceilToDouble())}',
+        Text(
+            ok
+                ? 'Covers $days days, till ${_date(till)}'
+                : v < min
+                    ? 'Enter at least ${rupees(min)} (7 days)'
+                    : 'You can recharge up to ${rupees(max)} (12 months) at a time',
             style: T.caption.copyWith(fontSize: 12.5, color: ok ? C.inkSoft : C.warning)),
         const SizedBox(height: S.lg),
         PrimaryButton(label: 'Use this amount', onTap: ok ? () => Navigator.of(context).pop(v) : null),
@@ -900,6 +968,8 @@ class _RechargeSuccessState extends State<_RechargeSuccess> with SingleTickerPro
       },
       child: Scaffold(
         body: Stack(children: [
+          // Behind the content and clear of the status bar.
+          const Positioned.fill(child: SafeArea(child: Confetti())),
           SafeArea(
             child: Column(children: [
               Expanded(
@@ -966,7 +1036,6 @@ class _RechargeSuccessState extends State<_RechargeSuccess> with SingleTickerPro
               Padding(padding: const EdgeInsets.fromLTRB(S.page, 0, S.page, S.lg), child: PrimaryButton(label: 'Done', onTap: _done)),
             ]),
           ),
-          const Positioned.fill(child: Confetti()),
         ]),
       ),
     );
@@ -1025,7 +1094,7 @@ class _PaymentCheckState extends State<PaymentCheckScreen> with TickerProviderSt
   int _step = 0;
 
   List<String> get _steps =>
-      widget.steps ?? ['Contacting ${widget.method}', 'Confirming with your bank', widget.success ? 'Updating your TV' : 'Waiting for confirmation'];
+      widget.steps ?? [_firstStep(widget.method), 'Confirming with your bank', widget.success ? 'Updating your TV' : 'Waiting for confirmation'];
 
   @override
   void didChangeDependencies() {
